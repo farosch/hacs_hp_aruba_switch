@@ -59,13 +59,13 @@ class ArubaSwitch(SwitchEntity):
         self._attr_unique_id = f"{host}_{port}_{'poe' if is_poe else 'port'}"
         self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
         self._last_update = 0
-        self._update_interval = 90  # Increase to 90 seconds
+        self._update_interval = 35  # Reduced since bulk queries are more efficient
         
-        # Stagger updates to prevent simultaneous SSH connections
+        # Stagger updates to prevent simultaneous cache refreshes
         # Use port number and type to create different offsets
         import hashlib
         offset_hash = hashlib.md5(f"{port}_{is_poe}".encode()).hexdigest()
-        self._update_offset = int(offset_hash[:2], 16) % 30  # 0-29 second offset
+        self._update_offset = int(offset_hash[:2], 16) % 15  # 0-14 second offset (reduced)
 
     @property
     def name(self):
@@ -142,7 +142,7 @@ class ArubaSwitch(SwitchEntity):
             self.async_write_ha_state()
 
     async def async_update(self):
-        """Update the switch state."""
+        """Update the switch state using bulk queries for better performance."""
         import time
         current_time = time.time()
         
@@ -155,32 +155,23 @@ class ArubaSwitch(SwitchEntity):
         
         self._last_update = current_time
         
-        if self._is_poe:
-            # Check PoE status
-            command = f"show power-over-ethernet {self._port}"
-        else:
-            # Check interface status
-            command = f"show interface {self._port}"
-        
-        _LOGGER.debug(f"Executing update command for {self._attr_name}: {command}")
-        # Use shorter timeout for updates
-        result = await self._ssh_manager.execute_command(command, timeout=8)
-        _LOGGER.debug(f"Update result for {self._attr_name}: {repr(result)}")
-        
-        if result is not None:
-            self._available = True
-            if self._is_poe:
-                # Parse PoE status from output
-                output_lower = result.lower()
-                self._is_on = any(keyword in output_lower for keyword in [
-                    'enabled', 'on', 'delivering', 'active'
-                ])
+        try:
+            # Use bulk query method instead of individual queries
+            status = await self._ssh_manager.get_port_status(self._port, self._is_poe)
+            
+            if status:
+                self._available = True
+                if self._is_poe:
+                    # Parse PoE status from bulk query
+                    self._is_on = status.get("power_enable", False) and status.get("poe_status", False)
+                else:
+                    # Parse interface status from bulk query
+                    port_enabled = status.get("port_enabled", False)
+                    link_up = status.get("link_status", "down").lower() == "up"
+                    self._is_on = port_enabled and link_up
             else:
-                # Parse interface status from output
-                output_lower = result.lower()
-                # Interface is up if it contains "up" but not "down"
-                has_up = 'up' in output_lower
-                has_down = 'down' in output_lower and 'up' not in output_lower.split('down')[0]
-                self._is_on = has_up and not has_down
-        else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.warning(f"Failed to update {self._attr_name}: {e}")
             self._available = False

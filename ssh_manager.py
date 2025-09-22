@@ -25,6 +25,13 @@ class ArubaSSHManager:
         self._command_queue = []
         self._processing_queue = False
         
+        # Bulk query caching
+        self._interface_cache = {}
+        self._poe_cache = {}
+        self._cache_lock = asyncio.Lock()
+        self._last_bulk_update = 0
+        self._bulk_update_interval = 30  # Bulk update every 30 seconds
+        
     async def execute_command(self, command: str, timeout: int = 10) -> Optional[str]:
         """Execute a command on the switch with proper connection management."""
         # Use global semaphore to limit concurrent connections
@@ -202,6 +209,120 @@ class ArubaSSHManager:
                 except Exception as e:
                     _LOGGER.debug(f"SSH command '{command}' failed for {self.host}: {e}")
                     return None
+
+    async def get_all_interface_status(self) -> dict:
+        """Get status for all interfaces in a single query."""
+        result = await self.execute_command("show interface all", timeout=15)
+        if not result:
+            return {}
+        
+        interfaces = {}
+        current_interface = None
+        
+        for line in result.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for interface headers like "Status and Counters - Port Counters for port X"
+            if "port counters for port" in line.lower():
+                try:
+                    port_num = line.split("port")[-1].strip()
+                    current_interface = port_num
+                    interfaces[current_interface] = {"port_enabled": False, "link_status": "down"}
+                except:
+                    continue
+            elif current_interface:
+                line_lower = line.lower()
+                if "port enabled" in line_lower:
+                    interfaces[current_interface]["port_enabled"] = "yes" in line_lower
+                elif "link status" in line_lower:
+                    interfaces[current_interface]["link_status"] = "up" if "up" in line_lower else "down"
+        
+        _LOGGER.debug(f"Parsed {len(interfaces)} interfaces from bulk query")
+        return interfaces
+
+    async def get_all_poe_status(self) -> dict:
+        """Get PoE status for all ports in a single query."""
+        result = await self.execute_command("show power-over-ethernet all", timeout=15)
+        if not result:
+            return {}
+        
+        poe_ports = {}
+        current_port = None
+        
+        for line in result.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for port headers like "Status and Configuration Information for port X"
+            if "information for port" in line.lower():
+                try:
+                    port_num = line.split("port")[-1].strip()
+                    current_port = port_num
+                    poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
+                except:
+                    continue
+            elif current_port:
+                line_lower = line.lower()
+                if "power enable" in line_lower:
+                    poe_ports[current_port]["power_enable"] = "yes" in line_lower
+                elif "poe port status" in line_lower:
+                    # PoE is considered "on" if it's delivering, searching, or enabled
+                    poe_ports[current_port]["poe_status"] = any(status in line_lower for status in 
+                        ["delivering", "searching", "enabled", "on"])
+        
+        _LOGGER.debug(f"Parsed {len(poe_ports)} PoE ports from bulk query")
+        return poe_ports
+
+    async def update_bulk_cache(self) -> bool:
+        """Update the bulk cache with fresh data from the switch."""
+        import time
+        current_time = time.time()
+        
+        async with self._cache_lock:
+            # Only update if enough time has passed
+            if current_time - self._last_bulk_update < self._bulk_update_interval:
+                return True  # Cache is still fresh
+            
+            try:
+                # Get both interface and PoE data concurrently
+                interface_task = asyncio.create_task(self.get_all_interface_status())
+                poe_task = asyncio.create_task(self.get_all_poe_status())
+                
+                self._interface_cache, self._poe_cache = await asyncio.gather(
+                    interface_task, poe_task, return_exceptions=True
+                )
+                
+                # Handle any exceptions
+                if isinstance(self._interface_cache, Exception):
+                    _LOGGER.warning(f"Failed to update interface cache: {self._interface_cache}")
+                    self._interface_cache = {}
+                    return False
+                    
+                if isinstance(self._poe_cache, Exception):
+                    _LOGGER.warning(f"Failed to update PoE cache: {self._poe_cache}")
+                    self._poe_cache = {}
+                    return False
+                
+                self._last_bulk_update = current_time
+                _LOGGER.debug(f"Updated bulk cache with {len(self._interface_cache)} interfaces and {len(self._poe_cache)} PoE ports")
+                return True
+                
+            except Exception as e:
+                _LOGGER.error(f"Failed to update bulk cache for {self.host}: {e}")
+                return False
+
+    async def get_port_status(self, port: str, is_poe: bool = False) -> dict:
+        """Get cached status for a specific port."""
+        await self.update_bulk_cache()
+        
+        async with self._cache_lock:
+            if is_poe:
+                return self._poe_cache.get(port, {"power_enable": False, "poe_status": False})
+            else:
+                return self._interface_cache.get(port, {"port_enabled": False, "link_status": "down"})
 
 # Global connection managers
 _connection_managers: Dict[str, ArubaSSHManager] = {}
