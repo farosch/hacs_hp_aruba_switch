@@ -70,6 +70,13 @@ class ArubaSwitch(SwitchEntity):
         self._available = True
         self._attr_name = f"Port {port} {'PoE' if is_poe else ''}".strip()
         self._attr_unique_id = f"{host}_{port}_{'poe' if is_poe else 'port'}"
+        
+        # Set appropriate icons for different entity types
+        if is_poe:
+            self._attr_icon = "mdi:flash"
+        else:
+            self._attr_icon = "mdi:ethernet"
+            
         self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
         self._last_update = 0
         self._update_interval = 35  # Reduced since bulk queries are more efficient
