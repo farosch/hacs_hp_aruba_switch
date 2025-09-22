@@ -1,0 +1,5 @@
+DOMAIN = "Domain Name, eg. 'local'"
+CONF_HOST = "Hostname/IP"
+CONF_USERNAME = "Username"
+CONF_PASSWORD = "Password"
+CONF_EXCLUDE_PORTS = "Comma Seperated List, eg. '23,24,28'"
