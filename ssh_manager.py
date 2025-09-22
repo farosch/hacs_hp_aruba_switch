@@ -94,28 +94,32 @@ class ArubaSSHManager:
                                 
                                 # Send the command(s) - handle multi-line commands
                                 command_lines = command.split('\n')
-                                for cmd_line in command_lines:
+                                for i, cmd_line in enumerate(command_lines):
                                     if cmd_line.strip():  # Skip empty lines
+                                        _LOGGER.debug(f"Sending command line {i+1}/{len(command_lines)}: {cmd_line.strip()}")
                                         shell.send(cmd_line.strip() + '\n')
-                                        time.sleep(0.5)  # Wait between commands
+                                        time.sleep(0.8)  # Increased delay between commands
                                 
                                 # Wait for final command execution
-                                time.sleep(1)
+                                time.sleep(2)  # Increased final wait
                                 
-                                # Collect output
+                                # Collect output with better completion detection
                                 output = ""
-                                max_wait = 10  # Maximum wait time in seconds
+                                max_wait = 15  # Increased maximum wait time
                                 start_time = time.time()
+                                consecutive_empty_reads = 0
                                 
                                 while time.time() - start_time < max_wait:
                                     if shell.recv_ready():
                                         chunk = shell.recv(4096).decode('utf-8', errors='ignore')
                                         output += chunk
+                                        consecutive_empty_reads = 0
                                         time.sleep(0.1)
                                     else:
-                                        time.sleep(0.2)
-                                        # Break if no more data and we have some output
-                                        if output and not shell.recv_ready():
+                                        consecutive_empty_reads += 1
+                                        time.sleep(0.3)
+                                        # Break if no data for several consecutive checks
+                                        if consecutive_empty_reads >= 5 and output:
                                             break
                                 
                                 shell.close()
@@ -133,6 +137,8 @@ class ArubaSSHManager:
                                         clean_lines.append(line)
                                 
                                 output = '\n'.join(clean_lines)
+                                
+                                _LOGGER.debug(f"SSH command '{command}' output for {self.host}: {repr(output)}")
                                 
                                 # Reset backoff on successful connection
                                 self._connection_backoff = 0.1

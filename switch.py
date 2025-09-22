@@ -21,6 +21,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     ports = [str(i) for i in range(1, 25)]  # Generate simple port numbers: 1, 2, 3, etc.
     entities = []
 
+    # Test SSH connectivity during setup
+    ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+    test_result = await ssh_manager.execute_command("show version", timeout=10)
+    _LOGGER.info(f"SSH connectivity test for {host}: {'SUCCESS' if test_result else 'FAILED'}")
+    if test_result:
+        _LOGGER.debug(f"Switch version info: {repr(test_result[:200])}")  # Log first 200 chars
+
     for port in ports:
         if port not in exclude_ports:
             # Port-Switch
@@ -97,10 +104,16 @@ class ArubaSwitch(SwitchEntity):
         else:
             command = f"configure\ninterface {self._port}\nno shutdown\nexit\nwrite mem\nexit"
         
+        _LOGGER.debug(f"Executing turn_on command for {self._attr_name}: {command}")
         result = await self._ssh_manager.execute_command(command)
+        _LOGGER.debug(f"Turn_on result for {self._attr_name}: {repr(result)}")
+        
         if result is not None:
             self._is_on = True
             self._available = True
+            # Force a state refresh from the switch
+            await asyncio.sleep(1)  # Wait for switch to process
+            await self.async_update()
             self.async_write_ha_state()
         else:
             self._available = False
@@ -113,10 +126,16 @@ class ArubaSwitch(SwitchEntity):
         else:
             command = f"configure\ninterface {self._port}\nshutdown\nexit\nwrite mem\nexit"
         
+        _LOGGER.debug(f"Executing turn_off command for {self._attr_name}: {command}")
         result = await self._ssh_manager.execute_command(command)
+        _LOGGER.debug(f"Turn_off result for {self._attr_name}: {repr(result)}")
+        
         if result is not None:
             self._is_on = False
             self._available = True
+            # Force a state refresh from the switch
+            await asyncio.sleep(1)  # Wait for switch to process
+            await self.async_update()
             self.async_write_ha_state()
         else:
             self._available = False
@@ -143,8 +162,11 @@ class ArubaSwitch(SwitchEntity):
             # Check interface status
             command = f"show interface {self._port}"
         
+        _LOGGER.debug(f"Executing update command for {self._attr_name}: {command}")
         # Use shorter timeout for updates
         result = await self._ssh_manager.execute_command(command, timeout=8)
+        _LOGGER.debug(f"Update result for {self._attr_name}: {repr(result)}")
+        
         if result is not None:
             self._available = True
             if self._is_poe:
