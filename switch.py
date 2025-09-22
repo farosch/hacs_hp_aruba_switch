@@ -34,6 +34,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class ArubaSwitch(SwitchEntity):
     """Representation of an Aruba switch port."""
     
+    # Reduce update frequency to avoid overwhelming the switch
+    entity_registry_enabled_default = True
+    
     def __init__(self, host, username, password, ssh_port, port, is_poe, entry_id):
         """Initialize the switch."""
         self._host = host
@@ -48,6 +51,14 @@ class ArubaSwitch(SwitchEntity):
         self._attr_name = f"Port {port} {'PoE' if is_poe else ''}".strip()
         self._attr_unique_id = f"{host}_{port}_{'poe' if is_poe else 'port'}"
         self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._last_update = 0
+        self._update_interval = 90  # Increase to 90 seconds
+        
+        # Stagger updates to prevent simultaneous SSH connections
+        # Use port number and type to create different offsets
+        import hashlib
+        offset_hash = hashlib.md5(f"{port}_{is_poe}".encode()).hexdigest()
+        self._update_offset = int(offset_hash[:2], 16) % 30  # 0-29 second offset
 
     @property
     def name(self):
@@ -113,6 +124,18 @@ class ArubaSwitch(SwitchEntity):
 
     async def async_update(self):
         """Update the switch state."""
+        import time
+        current_time = time.time()
+        
+        # Calculate time since last update with staggered offset
+        time_since_update = current_time - (self._last_update + self._update_offset)
+        
+        # Only update if enough time has passed
+        if time_since_update < self._update_interval:
+            return
+        
+        self._last_update = current_time
+        
         if self._is_poe:
             # Check PoE status
             command = f"show power-over-ethernet 1/{self._port}"
@@ -120,7 +143,8 @@ class ArubaSwitch(SwitchEntity):
             # Check interface status
             command = f"show interface 1/{self._port}"
         
-        result = await self._ssh_manager.execute_command(command)
+        # Use shorter timeout for updates
+        result = await self._ssh_manager.execute_command(command, timeout=8)
         if result is not None:
             self._available = True
             if self._is_poe:

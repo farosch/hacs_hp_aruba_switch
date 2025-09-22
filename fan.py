@@ -48,6 +48,8 @@ class ArubaFan(FanEntity):
         self._attr_preset_modes = SPEED_LIST
         self._attr_speed_count = len(SPEED_LIST)
         self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._last_update = 0
+        self._update_interval = 120  # Update fan status every 2 minutes
 
     @property
     def name(self):
@@ -151,8 +153,17 @@ class ArubaFan(FanEntity):
 
     async def async_update(self):
         """Update the fan state."""
+        import time
+        current_time = time.time()
+        
+        # Throttle fan updates - fans don't change often
+        if current_time - self._last_update < self._update_interval:
+            return
+        
+        self._last_update = current_time
+        
         command = "show system fan"
-        result = await self._ssh_manager.execute_command(command)
+        result = await self._ssh_manager.execute_command(command, timeout=8)
         if result is not None:
             self._available = True
             output_lower = result.lower()
