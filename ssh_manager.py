@@ -81,14 +81,58 @@ class ArubaSSHManager:
                                 final_params = {**connect_params, **config}
                                 ssh.connect(**final_params)
                                 
-                                # Execute command with shorter timeout
-                                stdin, stdout, stderr = ssh.exec_command(command, timeout=timeout)
-                                output = stdout.read().decode('utf-8', errors='ignore')
-                                error_output = stderr.read().decode('utf-8', errors='ignore')
-                                exit_status = stdout.channel.recv_exit_status()
+                                # Use invoke_shell for better switch compatibility
+                                shell = ssh.invoke_shell()
                                 
-                                if exit_status != 0 and error_output:
-                                    _LOGGER.debug(f"Command '{command}' returned non-zero exit status on {self.host}: {error_output}")
+                                # Send initial ENTER to activate CLI session
+                                shell.send('\n')
+                                time.sleep(0.5)  # Wait for prompt
+                                
+                                # Clear any initial output/banner
+                                if shell.recv_ready():
+                                    shell.recv(4096)
+                                
+                                # Send the command(s) - handle multi-line commands
+                                command_lines = command.split('\n')
+                                for cmd_line in command_lines:
+                                    if cmd_line.strip():  # Skip empty lines
+                                        shell.send(cmd_line.strip() + '\n')
+                                        time.sleep(0.5)  # Wait between commands
+                                
+                                # Wait for final command execution
+                                time.sleep(1)
+                                
+                                # Collect output
+                                output = ""
+                                max_wait = 10  # Maximum wait time in seconds
+                                start_time = time.time()
+                                
+                                while time.time() - start_time < max_wait:
+                                    if shell.recv_ready():
+                                        chunk = shell.recv(4096).decode('utf-8', errors='ignore')
+                                        output += chunk
+                                        time.sleep(0.1)
+                                    else:
+                                        time.sleep(0.2)
+                                        # Break if no more data and we have some output
+                                        if output and not shell.recv_ready():
+                                            break
+                                
+                                shell.close()
+                                
+                                # Clean up the output (remove command echo and prompts)
+                                lines = output.split('\n')
+                                clean_lines = []
+                                for line in lines:
+                                    line = line.strip()
+                                    # Skip empty lines, command echoes, and prompts
+                                    if (line and 
+                                        not line.endswith('#') and 
+                                        not line.endswith('>') and
+                                        command.replace('\n', ' ').strip() not in line):
+                                        clean_lines.append(line)
+                                
+                                output = '\n'.join(clean_lines)
                                 
                                 # Reset backoff on successful connection
                                 self._connection_backoff = 0.1
