@@ -10,6 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up Aruba switch from a config entry."""
+    _LOGGER.error("🚀 HP/ARUBA SWITCH INTEGRATION STARTING UP!")
     host = config_entry.data["host"]
     username = config_entry.data["username"]
     password = config_entry.data["password"]
@@ -17,12 +18,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     exclude_ports_str = config_entry.data.get("exclude_ports", "")
     exclude_poe_str = config_entry.data.get("exclude_poe", "")
     
+    # Get configured port count (default to 24 if not set)
+    port_count = config_entry.data.get("port_count", 24)
+    _LOGGER.error(f"🔧 HP/ARUBA SWITCH SETUP - Using port_count: {port_count}")
+    _LOGGER.error(f"🔧 HP/ARUBA SWITCH SETUP - Config entry data: {config_entry.data}")
+    
     # Parse exclusion lists
     exclude_ports = [p.strip() for p in exclude_ports_str.split(",") if p.strip()]
     exclude_poe = [p.strip() for p in exclude_poe_str.split(",") if p.strip()]
 
-    # Get port configuration from switch or use default 24 ports
-    ports = [str(i) for i in range(1, 25)]  # Generate simple port numbers: 1, 2, 3, etc.
+    # Generate port list based on configured count
+    ports = [str(i) for i in range(1, port_count + 1)]
+    _LOGGER.error(f"🔧 HP/ARUBA SWITCH SETUP - Generated {len(ports)} ports: {ports[:5]}...{ports[-2:] if len(ports) > 5 else ''}")
     entities = []
 
     # Test SSH connectivity during setup

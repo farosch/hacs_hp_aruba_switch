@@ -91,7 +91,7 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_USERNAME): str,
                 vol.Required(CONF_PASSWORD): str,
                 vol.Optional(CONF_SSH_PORT, default=22): int,
-                vol.Optional(CONF_PORT_COUNT, default=24): vol.All(int, vol.Range(min=1, max=48)),
+                vol.Optional(CONF_PORT_COUNT, default=24): int,
                 vol.Optional(CONF_EXCLUDE_PORTS, default=""): str,
                 vol.Optional(CONF_EXCLUDE_POE, default=""): str,
             }),
