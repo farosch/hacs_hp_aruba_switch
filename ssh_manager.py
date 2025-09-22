@@ -88,7 +88,11 @@ class ArubaSSHManager:
                                 shell.send('\n')
                                 time.sleep(0.5)  # Wait for prompt
                                 
-                                # Clear any initial output/banner
+                                # Disable paging to prevent "-- MORE --" prompts
+                                shell.send('no page\n')
+                                time.sleep(0.5)
+                                
+                                # Clear any initial output/banner and paging setup response
                                 if shell.recv_ready():
                                     shell.recv(4096)
                                 
@@ -103,9 +107,9 @@ class ArubaSSHManager:
                                 # Wait for final command execution
                                 time.sleep(2)  # Increased final wait
                                 
-                                # Collect output with better completion detection
+                                # Collect output with pager handling
                                 output = ""
-                                max_wait = 15  # Increased maximum wait time
+                                max_wait = 15  # Maximum wait time
                                 start_time = time.time()
                                 consecutive_empty_reads = 0
                                 
@@ -114,6 +118,17 @@ class ArubaSSHManager:
                                         chunk = shell.recv(4096).decode('utf-8', errors='ignore')
                                         output += chunk
                                         consecutive_empty_reads = 0
+                                        
+                                        # Check for pager prompts and handle them
+                                        if "-- MORE --" in chunk or "next page: Space" in chunk:
+                                            _LOGGER.debug("Detected pager prompt, sending space to continue")
+                                            shell.send(' ')  # Send space to continue
+                                            time.sleep(0.5)
+                                        elif "(q to quit)" in chunk.lower() or "quit: control-c" in chunk.lower():
+                                            _LOGGER.debug("Detected quit prompt, sending 'q' to exit pager")
+                                            shell.send('q')  # Send 'q' to quit pager
+                                            time.sleep(0.5)
+                                        
                                         time.sleep(0.1)
                                     else:
                                         consecutive_empty_reads += 1
@@ -124,15 +139,24 @@ class ArubaSSHManager:
                                 
                                 shell.close()
                                 
-                                # Clean up the output (remove command echo and prompts)
+                                # Remove ANSI escape sequences that clutter the output
+                                import re
+                                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                                output = ansi_escape.sub('', output)
+                                
+                                # Clean up the output (remove command echo, prompts, and pager artifacts)
                                 lines = output.split('\n')
                                 clean_lines = []
                                 for line in lines:
                                     line = line.strip()
-                                    # Skip empty lines, command echoes, and prompts
+                                    # Skip empty lines, command echoes, prompts, and pager artifacts
                                     if (line and 
                                         not line.endswith('#') and 
                                         not line.endswith('>') and
+                                        '-- MORE --' not in line and
+                                        'next page: Space' not in line and
+                                        'quit: Control-C' not in line and
+                                        'no page' not in line and
                                         command.replace('\n', ' ').strip() not in line):
                                         clean_lines.append(line)
                                 
