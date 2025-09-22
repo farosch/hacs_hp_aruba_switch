@@ -78,9 +78,9 @@ class ArubaSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
         if self._is_poe:
-            command = f"interface 1/{self._port}\npower-over-ethernet\nexit"
+            command = f"interface {self._port}\npower-over-ethernet\nexit"
         else:
-            command = f"interface 1/{self._port}\nno shutdown\nexit"
+            command = f"interface {self._port}\nno shutdown\nexit"
         
         success = await self._async_send_command(command)
         if success:
@@ -90,9 +90,9 @@ class ArubaSwitch(SwitchEntity):
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
         if self._is_poe:
-            command = f"interface 1/{self._port}\nno power-over-ethernet\nexit"
+            command = f"interface {self._port}\nno power-over-ethernet\nexit"
         else:
-            command = f"interface 1/{self._port}\nshutdown\nexit"
+            command = f"interface {self._port}\nshutdown\nexit"
         
         success = await self._async_send_command(command)
         if success:
@@ -103,10 +103,10 @@ class ArubaSwitch(SwitchEntity):
         """Update the switch state."""
         if self._is_poe:
             # Check PoE status
-            command = f"show power-over-ethernet 1/{self._port}"
+            command = f"show power-over-ethernet {self._port}"
         else:
             # Check interface status
-            command = f"show interface 1/{self._port}"
+            command = f"show interface {self._port}"
         
         success = await self._async_send_command(command, check_status=True)
         self._available = success
