@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configuration du Commutateur HP/Aruba",
-        "description": "Entrez les détails de connexion pour votre commutateur HP/Aruba. Cette intégration fournit le contrôle des ports du commutateur, la gestion PoE et le contrôle des ventilateurs via SSH.",
+        "description": "Entrez les détails de connexion pour votre commutateur HP/Aruba. Cette intégration fournit le contrôle des ports du commutateur et la gestion PoE via SSH.",
         "data": {
           "host": "Hôte (adresse IP ou nom d'hôte)",
           "username": "Nom d'utilisateur",
@@ -30,11 +30,6 @@
       },
       "poe": {
         "name": "Port {port} PoE"
-      }
-    },
-    "fan": {
-      "switch_fan": {
-        "name": "Ventilateur du Commutateur"
       }
     }
   }

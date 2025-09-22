@@ -4,24 +4,20 @@
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
 
-A Home Assistant custom integration that provides control over HP/Aruba switch ports, PoE management, and fan control through SSH connectivity.
+A Home Assistant custom integration that provides control over HP/Aruba switch ports and PoE management through SSH connectivity.
 
-## Features
+## 🌟 **Key Features**
 
 ### 🔌 **Port Management**
-- Control individual switch ports (enable/disable)
-- Real-time port status monitoring
-- Automatic state synchronization
+- Enable/disable individual switch ports
+- Real-time port status monitoring (link up/down)
+- Support for 24-port switches (easily configurable)
 
-### ⚡ **Power over Ethernet (PoE) Control**
-- Enable/disable PoE on individual ports
-- Monitor PoE power delivery status
-- Separate entities for port and PoE control
-
-### 🌀 **Fan Management**
-- Monitor switch fan status (multiple fans supported)
-- Control fan speed modes: Auto, Low, Medium, High
-- Real-time fan health monitoring
+### ⚡ **PoE Control**  
+- Individual PoE port enable/disable
+- Real-time PoE status monitoring
+- Power delivery status tracking
+- Separate control from regular port functions
 
 ### 🚀 **Performance Optimized**
 - Connection pooling for efficient SSH management
@@ -96,8 +92,9 @@ For each port (e.g., port 1):
 - `switch.aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port control
 - `switch.aruba_switch_xxx_xxx_xxx_xxx_poe_1` - PoE control
 
-### Fan Entity
-- `fan.aruba_switch_xxx_xxx_xxx_xxx_fans` - Fan system control
+All entities are automatically created and registered in Home Assistant with proper device information.
+
+## 🔧 **Configuration Options**
 
 ## Usage Examples
 
@@ -210,8 +207,10 @@ exit
 ### Status Checking
 ```bash
 show interface X
-show power-over-ethernet X
-show system fans
+show power-over-ethernet all
+```
+
+## 🎯 **Performance & Reliability**
 ```
 
 ### Fan Control
@@ -224,7 +223,7 @@ exit
 
 ## Performance Considerations
 
-- **Update Intervals**: Switch entities update every 90 seconds, fans every 120 seconds
+- **Update Intervals**: Switch entities update every 35 seconds with intelligent staggering
 - **Connection Limits**: Maximum 3 concurrent SSH connections
 - **Staggered Updates**: Entities update with random offsets to prevent overload
 - **Timeout Settings**: Optimized for network switches (8-second command timeout)

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "HP/Aruba Switch Konfiguration",
-        "description": "Geben Sie die Verbindungsdetails für Ihren HP/Aruba Switch ein. Diese Integration bietet Kontrolle über Switch-Ports, PoE-Verwaltung und Lüftersteuerung über SSH.",
+        "description": "Geben Sie die Verbindungsdetails für Ihren HP/Aruba Switch ein. Diese Integration bietet Kontrolle über Switch-Ports und PoE-Verwaltung über SSH.",
         "data": {
           "host": "Host (IP-Adresse oder Hostname)",
           "username": "Benutzername",
@@ -30,11 +30,6 @@
       },
       "poe": {
         "name": "PoE {port}"
-      }
-    },
-    "fan": {
-      "switch_fans": {
-        "name": "Switch-Lüfter"
       }
     }
   }

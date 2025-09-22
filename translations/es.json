@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configuración de Switch HP/Aruba",
-        "description": "Ingrese los detalles de conexión para su switch HP/Aruba. Esta integración proporciona control sobre los puertos del switch, gestión PoE y control de ventiladores a través de SSH.",
+        "description": "Ingrese los detalles de conexión para su switch HP/Aruba. Esta integración proporciona control de puertos del switch y gestión PoE a través de SSH.",
         "data": {
           "host": "Host (dirección IP o nombre de host)",
           "username": "Nombre de usuario",
@@ -15,9 +15,9 @@
       }
     },
     "error": {
-      "cannot_connect": "No se pudo conectar al switch. Por favor, verifique el host y la conectividad de red.",
-      "invalid_auth": "Autenticación inválida. Por favor, verifique su nombre de usuario y contraseña.",
-      "unknown": "Error inesperado. Por favor, revise los registros para más detalles."
+      "cannot_connect": "No se pudo conectar al switch. Verifique el host y la conectividad de red.",
+      "invalid_auth": "Autenticación inválida. Verifique su nombre de usuario y contraseña.",
+      "unknown": "Error inesperado. Verifique los registros para más detalles."
     },
     "abort": {
       "already_configured": "El dispositivo ya está configurado"
@@ -29,12 +29,7 @@
         "name": "Puerto {port}"
       },
       "poe": {
-        "name": "PoE {port}"
-      }
-    },
-    "fan": {
-      "switch_fans": {
-        "name": "Ventiladores del Switch"
+        "name": "Puerto {port} PoE"
       }
     }
   }
