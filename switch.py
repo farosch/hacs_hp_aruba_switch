@@ -112,7 +112,7 @@ class ArubaSwitch(SwitchEntity):
         """Return device information."""
         return {
             "identifiers": {(DOMAIN, self._host)},
-            "name": f"Aruba Switch {self._host}",
+            "name": f"Switch {self._host}",
             "manufacturer": "Aruba",
             "model": "Switch",
         }

@@ -1,4 +1,4 @@
-DOMAIN = "aruba_switch"
+DOMAIN = "hp_aruba_switch"
 CONF_HOST = "host"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
