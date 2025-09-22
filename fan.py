@@ -7,6 +7,7 @@ from homeassistant.util.percentage import (
     percentage_to_ordered_list_item,
 )
 from .const import DOMAIN
+from .ssh_manager import get_ssh_manager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class ArubaFan(FanEntity):
         )
         self._attr_preset_modes = SPEED_LIST
         self._attr_speed_count = len(SPEED_LIST)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
 
     @property
     def name(self):
@@ -126,10 +128,10 @@ class ArubaFan(FanEntity):
 
         # Map preset modes to Aruba CLI commands
         speed_commands = {
-            "auto": "fan auto",
-            "low": "fan speed low", 
-            "medium": "fan speed medium",
-            "high": "fan speed high"
+            "auto": "configure\nfan auto\nexit",
+            "low": "configure\nfan speed low\nexit", 
+            "medium": "configure\nfan speed medium\nexit",
+            "high": "configure\nfan speed high\nexit"
         }
         
         command = speed_commands.get(preset_mode)
@@ -137,144 +139,37 @@ class ArubaFan(FanEntity):
             _LOGGER.error(f"No command mapping for speed: {preset_mode}")
             return
 
-        success = await self._async_send_command(command)
-        if success:
+        result = await self._ssh_manager.execute_command(command)
+        if result is not None:
             self._speed = preset_mode
             self._is_on = True
+            self._available = True
+            self.async_write_ha_state()
+        else:
+            self._available = False
             self.async_write_ha_state()
 
     async def async_update(self):
         """Update the fan state."""
         command = "show system fan"
-        success = await self._async_send_command(command, check_status=True)
-        self._available = success
-
-    async def _async_send_command(self, command, check_status=False):
-        """Send command to switch via SSH."""
-        def _sync_ssh_command():
-            ssh = None
-            try:
-                ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                
-                # Enhanced connection parameters for Aruba switches
-                connect_params = {
-                    'hostname': self._host,
-                    'username': self._username,
-                    'password': self._password,
-                    'port': self._ssh_port,
-                    'timeout': 15,  # Increased timeout
-                    'auth_timeout': 10,  # Authentication timeout
-                    'banner_timeout': 10,  # Banner read timeout
-                    'look_for_keys': False,  # Don't look for SSH keys
-                    'allow_agent': False,  # Don't use SSH agent
-                }
-                
-                # Try different SSH configurations for compatibility
-                ssh_configs = [
-                    # Modern SSH (try first)
-                    {},
-                    # Legacy SSH for older switches
-                    {
-                        'disabled_algorithms': {
-                            'kex': [],
-                            'server_host_key_algs': [],
-                            'ciphers': [],
-                            'macs': []
-                        }
-                    },
-                    # Very old SSH compatibility
-                    {
-                        'disabled_algorithms': {
-                            'kex': ['diffie-hellman-group14-sha256', 'diffie-hellman-group16-sha512'],
-                            'server_host_key_algs': [],
-                            'ciphers': [],
-                            'macs': []
-                        }
-                    }
-                ]
-                
-                connection_successful = False
-                last_error = None
-                
-                # Try each SSH configuration
-                for i, config in enumerate(ssh_configs):
-                    try:
-                        if ssh:
-                            ssh.close()
-                        ssh = paramiko.SSHClient()
-                        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                        
-                        # Merge config with base parameters
-                        final_params = {**connect_params, **config}
-                        ssh.connect(**final_params)
-                        
-                        connection_successful = True
-                        _LOGGER.debug(f"SSH connection successful to {self._host} using config {i}")
-                        break
-                        
-                    except (paramiko.SSHException, EOFError, OSError) as e:
-                        last_error = e
-                        _LOGGER.debug(f"SSH config {i} failed for {self._host}: {e}")
-                        continue
-                
-                if not connection_successful:
-                    _LOGGER.error(f"All SSH connection attempts failed for {self._host}. Last error: {last_error}")
-                    return False
-                
-                if check_status:
-                    # For status checks, parse the output to determine fan state
-                    stdin, stdout, stderr = ssh.exec_command(command, timeout=10)
-                    output = stdout.read().decode('utf-8', errors='ignore').lower()
-                    
-                    # Parse fan status and speed from output
-                    if "auto" in output:
-                        self._speed = "auto"
-                    elif "high" in output:
-                        self._speed = "high"
-                    elif "medium" in output:
-                        self._speed = "medium"
-                    elif "low" in output:
-                        self._speed = "low"
-                    
-                    # Fan is considered on if it's running
-                    self._is_on = any(keyword in output for keyword in [
-                        'running', 'ok', 'active', 'operational'
-                    ]) or any(speed in output for speed in SPEED_LIST)
-                else:
-                    # For control commands, execute with timeout
-                    stdin, stdout, stderr = ssh.exec_command(command, timeout=15)
-                    exit_status = stdout.channel.recv_exit_status()
-                    if exit_status != 0:
-                        error_output = stderr.read().decode('utf-8', errors='ignore')
-                        _LOGGER.error(f"Fan command failed on {self._host}: {error_output}")
-                        return False
-                
-                return True
-                
-            except paramiko.AuthenticationException as e:
-                _LOGGER.error(f"Authentication failed for {self._host}: {e}")
-                return False
-            except paramiko.SSHException as e:
-                _LOGGER.error(f"SSH protocol error connecting to {self._host}: {e}")
-                # Check if this might be a port/service issue
-                if "banner" in str(e).lower():
-                    _LOGGER.error(f"SSH banner error - check if SSH is enabled on {self._host} and accessible on port {self._ssh_port}")
-                return False
-            except (EOFError, OSError) as e:
-                _LOGGER.error(f"Network error connecting to {self._host}: {e}")
-                _LOGGER.error(f"Check network connectivity and SSH service status on {self._host}")
-                return False
-            except Exception as e:
-                _LOGGER.error(f"Unexpected error connecting to {self._host}: {e}")
-                return False
-            finally:
-                if ssh:
-                    try:
-                        ssh.close()
-                    except:
-                        pass
-        
-        # Run SSH command in executor to avoid blocking the event loop
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _sync_ssh_command)
+        result = await self._ssh_manager.execute_command(command)
+        if result is not None:
+            self._available = True
+            output_lower = result.lower()
+            
+            # Parse fan status and speed from output
+            if "auto" in output_lower:
+                self._speed = "auto"
+            elif "high" in output_lower:
+                self._speed = "high"
+            elif "medium" in output_lower:
+                self._speed = "medium"
+            elif "low" in output_lower:
+                self._speed = "low"
+            
+            # Fan is considered on if it's running
+            self._is_on = any(keyword in output_lower for keyword in [
+                'running', 'ok', 'active', 'operational'
+            ]) or any(speed in output_lower for speed in SPEED_LIST)
+        else:
+            self._available = False
