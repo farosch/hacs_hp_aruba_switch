@@ -12,6 +12,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     host = config_entry.data["host"]
     username = config_entry.data["username"]
     password = config_entry.data["password"]
+    ssh_port = config_entry.data.get("ssh_port", 22)
     exclude_ports_str = config_entry.data.get("exclude_ports", "")
     exclude_ports = [p.strip() for p in exclude_ports_str.split(",") if p.strip()]
 
@@ -22,9 +23,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for port in ports:
         if port not in exclude_ports:
             # Port-Switch
-            entities.append(ArubaSwitch(host, username, password, port, False, config_entry.entry_id))
+            entities.append(ArubaSwitch(host, username, password, ssh_port, port, False, config_entry.entry_id))
             # PoE-Switch
-            entities.append(ArubaSwitch(host, username, password, port, True, config_entry.entry_id))
+            entities.append(ArubaSwitch(host, username, password, ssh_port, port, True, config_entry.entry_id))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -32,11 +33,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class ArubaSwitch(SwitchEntity):
     """Representation of an Aruba switch port."""
     
-    def __init__(self, host, username, password, port, is_poe, entry_id):
+    def __init__(self, host, username, password, ssh_port, port, is_poe, entry_id):
         """Initialize the switch."""
         self._host = host
         self._username = username
         self._password = password
+        self._ssh_port = ssh_port
         self._port = port
         self._is_poe = is_poe
         self._entry_id = entry_id
@@ -114,48 +116,127 @@ class ArubaSwitch(SwitchEntity):
     async def _async_send_command(self, command, check_status=False):
         """Send command to switch via SSH."""
         def _sync_ssh_command():
+            ssh = None
             try:
                 ssh = paramiko.SSHClient()
                 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(
-                    hostname=self._host,
-                    username=self._username,
-                    password=self._password,
-                    timeout=10
-                )
+                
+                # Enhanced connection parameters for Aruba switches
+                connect_params = {
+                    'hostname': self._host,
+                    'username': self._username,
+                    'password': self._password,
+                    'port': self._ssh_port,
+                    'timeout': 15,  # Increased timeout
+                    'auth_timeout': 10,  # Authentication timeout
+                    'banner_timeout': 10,  # Banner read timeout
+                    'look_for_keys': False,  # Don't look for SSH keys
+                    'allow_agent': False,  # Don't use SSH agent
+                }
+                
+                # Try different SSH configurations for compatibility
+                ssh_configs = [
+                    # Modern SSH (try first)
+                    {},
+                    # Legacy SSH for older switches
+                    {
+                        'disabled_algorithms': {
+                            'kex': [],
+                            'server_host_key_algs': [],
+                            'ciphers': [],
+                            'macs': []
+                        }
+                    },
+                    # Very old SSH compatibility
+                    {
+                        'disabled_algorithms': {
+                            'kex': ['diffie-hellman-group14-sha256', 'diffie-hellman-group16-sha512'],
+                            'server_host_key_algs': [],
+                            'ciphers': [],
+                            'macs': []
+                        }
+                    }
+                ]
+                
+                connection_successful = False
+                last_error = None
+                
+                # Try each SSH configuration
+                for i, config in enumerate(ssh_configs):
+                    try:
+                        if ssh:
+                            ssh.close()
+                        ssh = paramiko.SSHClient()
+                        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                        
+                        # Merge config with base parameters
+                        final_params = {**connect_params, **config}
+                        ssh.connect(**final_params)
+                        
+                        connection_successful = True
+                        _LOGGER.debug(f"SSH connection successful to {self._host} using config {i}")
+                        break
+                        
+                    except (paramiko.SSHException, EOFError, OSError) as e:
+                        last_error = e
+                        _LOGGER.debug(f"SSH config {i} failed for {self._host}: {e}")
+                        continue
+                
+                if not connection_successful:
+                    _LOGGER.error(f"All SSH connection attempts failed for {self._host}. Last error: {last_error}")
+                    return False
                 
                 if check_status:
                     # For status checks, parse the output to determine actual state
-                    stdin, stdout, stderr = ssh.exec_command(command)
-                    output = stdout.read().decode()
+                    stdin, stdout, stderr = ssh.exec_command(command, timeout=10)
+                    output = stdout.read().decode('utf-8', errors='ignore')
                     
                     if self._is_poe:
                         # Parse PoE status from output
-                        self._is_on = "Enabled" in output or "On" in output
+                        output_lower = output.lower()
+                        self._is_on = any(keyword in output_lower for keyword in [
+                            'enabled', 'on', 'delivering', 'active'
+                        ])
                     else:
                         # Parse interface status from output
-                        self._is_on = "up" in output.lower() and "down" not in output.lower()
+                        output_lower = output.lower()
+                        # Interface is up if it contains "up" but not "down"
+                        has_up = 'up' in output_lower
+                        has_down = 'down' in output_lower and 'up' not in output_lower.split('down')[0]
+                        self._is_on = has_up and not has_down
                 else:
-                    # For control commands, just execute
-                    stdin, stdout, stderr = ssh.exec_command(command)
+                    # For control commands, execute with timeout
+                    stdin, stdout, stderr = ssh.exec_command(command, timeout=15)
                     exit_status = stdout.channel.recv_exit_status()
                     if exit_status != 0:
-                        error_output = stderr.read().decode()
+                        error_output = stderr.read().decode('utf-8', errors='ignore')
                         _LOGGER.error(f"Command failed on {self._host}: {error_output}")
                         return False
                 
-                ssh.close()
                 return True
                 
-            except paramiko.AuthenticationException:
-                _LOGGER.error(f"Authentication failed for {self._host}")
+            except paramiko.AuthenticationException as e:
+                _LOGGER.error(f"Authentication failed for {self._host}: {e}")
                 return False
             except paramiko.SSHException as e:
-                _LOGGER.error(f"SSH error connecting to {self._host}: {e}")
+                _LOGGER.error(f"SSH protocol error connecting to {self._host}: {e}")
+                # Check if this might be a port/service issue
+                if "banner" in str(e).lower():
+                    _LOGGER.error(f"SSH banner error - check if SSH is enabled on {self._host} and accessible on port 22")
+                return False
+            except (EOFError, OSError) as e:
+                _LOGGER.error(f"Network error connecting to {self._host}: {e}")
+                _LOGGER.error(f"Check network connectivity and SSH service status on {self._host}")
                 return False
             except Exception as e:
-                _LOGGER.error(f"Error sending command to {self._host}: {e}")
+                _LOGGER.error(f"Unexpected error connecting to {self._host}: {e}")
                 return False
+            finally:
+                if ssh:
+                    try:
+                        ssh.close()
+                    except:
+                        pass
         
         # Run SSH command in executor to avoid blocking the event loop
         loop = asyncio.get_event_loop()

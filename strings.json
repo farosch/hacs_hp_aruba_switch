@@ -8,7 +8,8 @@
           "host": "Host (IP address or hostname)",
           "username": "Username",
           "password": "Password",
-          "exclude_ports": "Exclude ports (comma-separated, e.g., 1/1,1/24)"
+          "ssh_port": "SSH Port (default: 22)",
+          "exclude_ports": "Exclude ports (comma-separated, e.g., 1,24)"
         }
       }
     },
