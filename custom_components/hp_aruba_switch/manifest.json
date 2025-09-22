@@ -1,14 +1,14 @@
 {
   "domain": "hp_aruba_switch",
   "name": "HP/Aruba Switch",
-  "version": "1.0.1",
-  "documentation": "https://github.com/farosch/hacs_hp_aruba_switch",
-  "issue_tracker": "https://github.com/farosch/hacs_hp_aruba_switch/issues",
-  "requirements": ["paramiko"],
-  "dependencies": [],
   "codeowners": ["@farosch"],
   "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/farosch/hacs_hp_aruba_switch",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "loggers": ["paramiko"]
+  "issue_tracker": "https://github.com/farosch/hacs_hp_aruba_switch/issues",
+  "loggers": ["paramiko"],
+  "requirements": ["paramiko"],
+  "version": "1.0.1"
 }

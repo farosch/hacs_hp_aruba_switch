@@ -1,6 +1,10 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN
+
+# This integration only supports config entries, no YAML configuration
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the Aruba Switch component."""
