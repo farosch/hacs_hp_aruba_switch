@@ -20,14 +20,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     for port in ports:
         # Port-Switch
-        entities.append(HPPortSwitch(host, username, password, port, exclude_ports, poe=False))
+        entities.append(ArubaSwitch(host, username, password, port, exclude_ports, poe=False))
         # PoE-Switch
-        entities.append(HPPortSwitch(host, username, password, port, exclude_ports, poe=True))
+        entities.append(ArubaSwitch(host, username, password, port, exclude_ports, poe=True))
 
     async_add_entities(entities)
 
 
-class HPPortSwitch(SwitchEntity):
+class ArubaSwitch(SwitchEntity):
     def __init__(self, host, username, password, port, exclude_ports, poe=False):
         self._host = host
         self._username = username

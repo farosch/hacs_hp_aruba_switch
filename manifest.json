@@ -1,6 +1,6 @@
 {
-  "domain": "hp2530",
-  "name": "HP 2530 Switch",
+  "domain": "ArubaSwitch",
+  "name": "Aruba Switch",
   "version": "1.0",
   "requirements": ["paramiko"],
   "dependencies": [],

@@ -2,8 +2,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from .const import DOMAIN, CONF_HOST, CONF_USERNAME, CONF_PASSWORD, CONF_EXCLUDE_PORTS
 
-class HP2530ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Config flow für HP 2530 Switch Integration."""
+class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow für Aruba Switch Integration."""
 
     VERSION = 1
 
@@ -14,13 +14,13 @@ class HP2530ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data=user_input
             )
 
-        # Form für die UI
+        # UI form
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
                 vol.Required(CONF_HOST): str,
                 vol.Required(CONF_USERNAME): str,
                 vol.Required(CONF_PASSWORD): str,
-                vol.Optional(CONF_EXCLUDE_PORTS, default=""): str,  # z.B. "1/1,1/2,1/5"
+                vol.Optional(CONF_EXCLUDE_PORTS, default=""): str,
             })
         )
