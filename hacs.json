@@ -3,5 +3,6 @@
   "content_in_root": false,
   "render_readme": true,
   "zip_release": true,
-  "filename": "hp_aruba_switch.zip"
+  "filename": "hp_aruba_switch.zip",
+  "hacs": "1.6.0"
 }
