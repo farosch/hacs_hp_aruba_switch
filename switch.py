@@ -164,19 +164,26 @@ class ArubaSwitch(SwitchEntity):
         try:
             # Use bulk query method instead of individual queries
             status = await self._ssh_manager.get_port_status(self._port, self._is_poe)
+            _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} status: {status}")
             
             if status:
                 self._available = True
                 if self._is_poe:
                     # Parse PoE status from bulk query
-                    self._is_on = status.get("power_enable", False) and status.get("poe_status", False)
+                    power_enable = status.get("power_enable", False)
+                    poe_status = status.get("poe_status", False)
+                    self._is_on = power_enable and poe_status
+                    _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status}, final_state={self._is_on}")
                 else:
                     # Parse interface status from bulk query
+                    # For switch ports, "on" means administratively enabled, regardless of link status
                     port_enabled = status.get("port_enabled", False)
                     link_up = status.get("link_status", "down").lower() == "up"
-                    self._is_on = port_enabled and link_up
+                    self._is_on = port_enabled  # Only check if port is administratively enabled
+                    _LOGGER.debug(f"Interface port {self._port}: port_enabled={port_enabled}, link_up={link_up}, final_state={self._is_on}")
             else:
                 self._available = False
+                _LOGGER.debug(f"No status data received for port {self._port} {'PoE' if self._is_poe else ''}")
                 
         except Exception as e:
             _LOGGER.warning(f"Failed to update {self._attr_name}: {e}")

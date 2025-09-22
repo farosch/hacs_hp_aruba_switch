@@ -234,10 +234,24 @@ class ArubaSSHManager:
                     continue
             elif current_interface:
                 line_lower = line.lower()
-                if "port enabled" in line_lower:
-                    interfaces[current_interface]["port_enabled"] = "yes" in line_lower
+                _LOGGER.debug(f"Parsing interface line for port {current_interface}: {repr(line)}")
+                
+                # Check for port enabled/disabled status - handle multiple formats
+                if any(keyword in line_lower for keyword in ["port enabled", "enabled", "status"]):
+                    # Look for enabled/disabled or yes/no indicators
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active"])
+                        interfaces[current_interface]["port_enabled"] = is_enabled
+                        _LOGGER.debug(f"Found port status for {current_interface}: {is_enabled} (from '{value_part}')")
+                
+                # Check for link status
                 elif "link status" in line_lower:
-                    interfaces[current_interface]["link_status"] = "up" if "up" in line_lower else "down"
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        link_status = "up" if "up" in value_part else "down"
+                        interfaces[current_interface]["link_status"] = link_status
+                        _LOGGER.debug(f"Found link status for {current_interface}: {link_status}")
         
         _LOGGER.debug(f"Parsed {len(interfaces)} interfaces from bulk query")
         return interfaces
@@ -266,12 +280,23 @@ class ArubaSSHManager:
                     continue
             elif current_port:
                 line_lower = line.lower()
+                _LOGGER.debug(f"Parsing PoE line for port {current_port}: {repr(line)}")
+                
                 if "power enable" in line_lower:
-                    poe_ports[current_port]["power_enable"] = "yes" in line_lower
-                elif "poe port status" in line_lower:
-                    # PoE is considered "on" if it's delivering, searching, or enabled
-                    poe_ports[current_port]["poe_status"] = any(status in line_lower for status in 
-                        ["delivering", "searching", "enabled", "on"])
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        is_enabled = "yes" in value_part
+                        poe_ports[current_port]["power_enable"] = is_enabled
+                        _LOGGER.debug(f"Found PoE power enable for {current_port}: {is_enabled}")
+                        
+                elif "poe port status" in line_lower or "poe status" in line_lower:
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        # PoE is considered "on" if it's delivering, searching, or enabled
+                        poe_active = any(status in value_part for status in 
+                            ["delivering", "searching", "enabled", "on", "active"])
+                        poe_ports[current_port]["poe_status"] = poe_active
+                        _LOGGER.debug(f"Found PoE status for {current_port}: {poe_active} (from '{value_part}')")
         
         _LOGGER.debug(f"Parsed {len(poe_ports)} PoE ports from bulk query")
         return poe_ports
