@@ -5,7 +5,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from .const import DOMAIN, CONF_EXCLUDE_PORTS, CONF_EXCLUDE_POE, CONF_SSH_PORT
+from .const import DOMAIN, CONF_EXCLUDE_PORTS, CONF_EXCLUDE_POE, CONF_SSH_PORT, CONF_PORT_COUNT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +91,7 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_USERNAME): str,
                 vol.Required(CONF_PASSWORD): str,
                 vol.Optional(CONF_SSH_PORT, default=22): int,
+                vol.Optional(CONF_PORT_COUNT, default=24): vol.All(int, vol.Range(min=1, max=48)),
                 vol.Optional(CONF_EXCLUDE_PORTS, default=""): str,
                 vol.Optional(CONF_EXCLUDE_POE, default=""): str,
             }),

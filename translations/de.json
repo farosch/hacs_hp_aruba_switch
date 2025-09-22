@@ -9,6 +9,7 @@
           "username": "Benutzername",
           "password": "Passwort",
           "ssh_port": "SSH-Port (Standard: 22)",
+          "port_count": "Anzahl der Ports (1-48, Standard: 24)",
           "exclude_ports": "Ports ausschließen (kommagetrennt, z.B. 1,24)",
           "exclude_poe": "PoE-Ports ausschließen (kommagetrennt, z.B. 23,24)"
         }
