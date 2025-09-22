@@ -44,17 +44,6 @@ This integration works with HP/Aruba switches that support SSH access, including
 
 ## Installation
 
-### HACS (Recommended)
-
-1. Open HACS in Home Assistant
-2. Go to "Integrations"
-3. Click the "+" button
-4. Search for "HP/Aruba Switch"
-5. Install the integration
-6. Restart Home Assistant
-
-### Manual Installation
-
 1. Download the latest release
 2. Copy the `hp_aruba_switch` folder to your `custom_components` directory
 3. Restart Home Assistant
