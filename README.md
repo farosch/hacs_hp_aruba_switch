@@ -2,7 +2,7 @@
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
+[![License][license-shield]][license-url]
 
 A Home Assistant custom integration that provides control over HP/Aruba switch ports and PoE management through SSH connectivity.
 
@@ -243,8 +243,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Note**: This integration requires SSH access to your switch. Ensure you understand the security implications and follow your organization's security policies.
 
+<!-- Badge Definitions -->
+[releases-shield]: https://img.shields.io/github/release/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
+[releases]: https://github.com/farosch/hacs_hp_aruba_switch/releases
 [commits-shield]: https://img.shields.io/github/commit-activity/y/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
 [commits]: https://github.com/farosch/hacs_hp_aruba_switch/commits/main
 [license-shield]: https://img.shields.io/github/license/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
-[releases]: https://github.com/farosch/hacs_hp_aruba_switch/releases
+[license-url]: https://github.com/farosch/hacs_hp_aruba_switch/blob/main/LICENSE
