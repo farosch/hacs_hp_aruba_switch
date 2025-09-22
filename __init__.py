@@ -1,26 +1,29 @@
-from homeassistant.helpers import discovery
-from .const import DOMAIN, CONF_HOST, CONF_USERNAME, CONF_PASSWORD, CONF_EXCLUDE_PORTS
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from .const import DOMAIN
 
-async def async_setup(hass, config):
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up the Aruba Switch component."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
-async def async_setup_entry(hass, entry):
-    host = entry.data[CONF_HOST]
-    username = entry.data[CONF_USERNAME]
-    password = entry.data[CONF_PASSWORD]
-    exclude_ports_str = entry.data.get(CONF_EXCLUDE_PORTS, "")
-    exclude_ports = [p.strip() for p in exclude_ports_str.split(",") if p.strip()]
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up Aruba Switch from a config entry."""
+    # Store the config entry data
+    hass.data[DOMAIN][entry.entry_id] = entry.data
 
-    hass.data[DOMAIN][entry.entry_id] = {
-        CONF_HOST: host,
-        CONF_USERNAME: username,
-        CONF_PASSWORD: password,
-        CONF_EXCLUDE_PORTS: exclude_ports,
-    }
-
-    # Switches registrieren
-    hass.async_create_task(
-        discovery.async_load_platform(hass, "switch", DOMAIN, entry.data, entry)
-    )
+    # Forward the setup to the switch platform
+    await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
+    
     return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    # Unload the switch platform
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["switch"])
+    
+    if unload_ok:
+        # Remove the config entry from hass.data
+        hass.data[DOMAIN].pop(entry.entry_id)
+    
+    return unload_ok
