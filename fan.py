@@ -130,10 +130,10 @@ class ArubaFan(FanEntity):
 
         # Map preset modes to Aruba CLI commands
         speed_commands = {
-            "auto": "configure\nfan auto\nexit",
-            "low": "configure\nfan speed low\nexit", 
-            "medium": "configure\nfan speed medium\nexit",
-            "high": "configure\nfan speed high\nexit"
+            "auto": "configure\nfan auto\nwrite mem\nexit",
+            "low": "configure\nfan speed low\nwrite mem\nexit", 
+            "medium": "configure\nfan speed medium\nwrite mem\nexit",
+            "high": "configure\nfan speed high\nwrite mem\nexit"
         }
         
         command = speed_commands.get(preset_mode)

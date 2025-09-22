@@ -93,9 +93,9 @@ class ArubaSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
         if self._is_poe:
-            command = f"configure\ninterface 1/{self._port}\npower-over-ethernet\nexit\nexit"
+            command = f"configure\ninterface {self._port}\npower-over-ethernet\nexit\nwrite mem\nexit"
         else:
-            command = f"configure\ninterface 1/{self._port}\nno shutdown\nexit\nexit"
+            command = f"configure\ninterface {self._port}\nno shutdown\nexit\nwrite mem\nexit"
         
         result = await self._ssh_manager.execute_command(command)
         if result is not None:
@@ -109,9 +109,9 @@ class ArubaSwitch(SwitchEntity):
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
         if self._is_poe:
-            command = f"configure\ninterface 1/{self._port}\nno power-over-ethernet\nexit\nexit"
+            command = f"configure\ninterface {self._port}\nno power-over-ethernet\nexit\nwrite mem\nexit"
         else:
-            command = f"configure\ninterface 1/{self._port}\nshutdown\nexit\nexit"
+            command = f"configure\ninterface {self._port}\nshutdown\nexit\nwrite mem\nexit"
         
         result = await self._ssh_manager.execute_command(command)
         if result is not None:
@@ -138,10 +138,10 @@ class ArubaSwitch(SwitchEntity):
         
         if self._is_poe:
             # Check PoE status
-            command = f"show power-over-ethernet 1/{self._port}"
+            command = f"show power-over-ethernet {self._port}"
         else:
             # Check interface status
-            command = f"show interface 1/{self._port}"
+            command = f"show interface {self._port}"
         
         # Use shorter timeout for updates
         result = await self._ssh_manager.execute_command(command, timeout=8)
