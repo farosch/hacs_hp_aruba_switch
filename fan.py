@@ -39,8 +39,8 @@ class ArubaFan(FanEntity):
         self._is_on = True  # Fans are typically always on
         self._available = True
         self._speed = "auto"  # Default to auto mode
-        self._attr_name = f"Switch Fan"
-        self._attr_unique_id = f"{host}_fan"
+        self._attr_name = f"Switch Fans"  # Updated to reflect multiple fans
+        self._attr_unique_id = f"{host}_fans"  # Updated to reflect multiple fans
         self._attr_supported_features = (
             FanEntityFeature.SET_SPEED | 
             FanEntityFeature.PRESET_MODE
@@ -162,25 +162,34 @@ class ArubaFan(FanEntity):
         
         self._last_update = current_time
         
-        command = "show system fan"
+        command = "show system fans"
         result = await self._ssh_manager.execute_command(command, timeout=8)
         if result is not None:
             self._available = True
             output_lower = result.lower()
             
-            # Parse fan status and speed from output
-            if "auto" in output_lower:
-                self._speed = "auto"
-            elif "high" in output_lower:
-                self._speed = "high"
-            elif "medium" in output_lower:
-                self._speed = "medium"
-            elif "low" in output_lower:
-                self._speed = "low"
+            _LOGGER.debug(f"Fan command output for {self._host}: {result}")
             
-            # Fan is considered on if it's running
-            self._is_on = any(keyword in output_lower for keyword in [
-                'running', 'ok', 'active', 'operational'
-            ]) or any(speed in output_lower for speed in SPEED_LIST)
+            # Parse fan status from the table output
+            # Look for "fan ok", "fan failure", etc. in the State column
+            fan_ok_count = output_lower.count('fan ok')
+            fan_failure_count = output_lower.count('fan failure') + output_lower.count('failure state')
+            
+            _LOGGER.debug(f"Fan status for {self._host}: {fan_ok_count} OK, {fan_failure_count} failed")
+            
+            # Fan system is considered "on" if at least one fan is working
+            self._is_on = fan_ok_count > 0
+            
+            # Determine overall fan speed based on system status
+            if 'auto' in output_lower or 'automatic' in output_lower:
+                self._speed = "auto"
+            elif fan_failure_count > 0:
+                # If any fans are failing, might be running at high speed
+                self._speed = "high"
+            elif fan_ok_count > 0:
+                # Default to auto mode when fans are working normally
+                self._speed = "auto"
+            else:
+                self._speed = "auto"
         else:
             self._available = False
