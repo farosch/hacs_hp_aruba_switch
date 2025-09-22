@@ -9,7 +9,8 @@
           "username": "Nombre de usuario",
           "password": "Contraseña",
           "ssh_port": "Puerto SSH (predeterminado: 22)",
-          "exclude_ports": "Excluir puertos (separados por comas, ej. 1,24)"
+          "exclude_ports": "Excluir puertos (separados por comas, ej: 1,24)",
+          "exclude_poe": "Excluir puertos PoE (separados por comas, ej: 23,24)"
         }
       }
     },

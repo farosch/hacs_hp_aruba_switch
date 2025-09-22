@@ -9,14 +9,15 @@
           "username": "Nom d'utilisateur",
           "password": "Mot de passe",
           "ssh_port": "Port SSH (défaut : 22)",
-          "exclude_ports": "Exclure les ports (séparés par des virgules, ex. 1,24)"
+          "exclude_ports": "Exclure les ports (séparés par des virgules, ex : 1,24)",
+          "exclude_poe": "Exclure les ports PoE (séparés par des virgules, ex : 23,24)"
         }
       }
     },
     "error": {
       "cannot_connect": "Échec de la connexion au commutateur. Veuillez vérifier l'hôte et la connectivité réseau.",
       "invalid_auth": "Authentification invalide. Veuillez vérifier votre nom d'utilisateur et votre mot de passe.",
-      "unknown": "Erreur inattendue. Veuillez consulter les journaux pour plus de détails."
+      "unknown": "Erreur inattendue. Veuillez vérifier les journaux pour plus de détails."
     },
     "abort": {
       "already_configured": "L'appareil est déjà configuré"
@@ -28,12 +29,12 @@
         "name": "Port {port}"
       },
       "poe": {
-        "name": "PoE {port}"
+        "name": "Port {port} PoE"
       }
     },
     "fan": {
-      "switch_fans": {
-        "name": "Ventilateurs du Commutateur"
+      "switch_fan": {
+        "name": "Ventilateur du Commutateur"
       }
     }
   }

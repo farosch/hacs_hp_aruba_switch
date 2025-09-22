@@ -15,7 +15,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     password = config_entry.data["password"]
     ssh_port = config_entry.data.get("ssh_port", 22)
     exclude_ports_str = config_entry.data.get("exclude_ports", "")
+    exclude_poe_str = config_entry.data.get("exclude_poe", "")
+    
+    # Parse exclusion lists
     exclude_ports = [p.strip() for p in exclude_ports_str.split(",") if p.strip()]
+    exclude_poe = [p.strip() for p in exclude_poe_str.split(",") if p.strip()]
 
     # Get port configuration from switch or use default 24 ports
     ports = [str(i) for i in range(1, 25)]  # Generate simple port numbers: 1, 2, 3, etc.
@@ -29,10 +33,12 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         _LOGGER.debug(f"Switch version info: {repr(test_result[:200])}")  # Log first 200 chars
 
     for port in ports:
+        # Add port switch entity (if not excluded)
         if port not in exclude_ports:
-            # Port-Switch
             entities.append(ArubaSwitch(host, username, password, ssh_port, port, False, config_entry.entry_id))
-            # PoE-Switch
+        
+        # Add PoE switch entity (if not excluded)
+        if port not in exclude_poe:
             entities.append(ArubaSwitch(host, username, password, ssh_port, port, True, config_entry.entry_id))
 
     async_add_entities(entities, update_before_add=True)
@@ -102,7 +108,7 @@ class ArubaSwitch(SwitchEntity):
         if self._is_poe:
             command = f"configure\ninterface {self._port}\npower-over-ethernet\nexit\nwrite mem\nexit"
         else:
-            command = f"configure\ninterface {self._port}\nno shutdown\nexit\nwrite mem\nexit"
+            command = f"configure\ninterface {self._port}\nenable\nexit\nwrite mem\nexit"
         
         _LOGGER.debug(f"Executing turn_on command for {self._attr_name}: {command}")
         result = await self._ssh_manager.execute_command(command)
@@ -124,7 +130,7 @@ class ArubaSwitch(SwitchEntity):
         if self._is_poe:
             command = f"configure\ninterface {self._port}\nno power-over-ethernet\nexit\nwrite mem\nexit"
         else:
-            command = f"configure\ninterface {self._port}\nshutdown\nexit\nwrite mem\nexit"
+            command = f"configure\ninterface {self._port}\ndisable\nexit\nwrite mem\nexit"
         
         _LOGGER.debug(f"Executing turn_off command for {self._attr_name}: {command}")
         result = await self._ssh_manager.execute_command(command)
