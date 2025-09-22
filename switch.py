@@ -16,7 +16,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     exclude_ports = [p.strip() for p in exclude_ports_str.split(",") if p.strip()]
 
     # Get port configuration from switch or use default 24 ports
-    ports = [f"1/{i}" for i in range(1, 25)]  # This should ideally be detected from the switch
+    ports = [str(i) for i in range(1, 25)]  # Generate simple port numbers: 1, 2, 3, etc.
     entities = []
 
     for port in ports:
@@ -42,7 +42,7 @@ class ArubaSwitch(SwitchEntity):
         self._entry_id = entry_id
         self._is_on = False
         self._available = True
-        self._attr_name = f"Aruba {self._host} {'PoE' if is_poe else 'Port'} {port}"
+        self._attr_name = f"Port {port} {'PoE' if is_poe else ''}".strip()
         self._attr_unique_id = f"{host}_{port}_{'poe' if is_poe else 'port'}"
 
     @property
@@ -78,9 +78,9 @@ class ArubaSwitch(SwitchEntity):
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
         if self._is_poe:
-            command = f"interface {self._port}\npower-over-ethernet\nexit"
+            command = f"interface 1/{self._port}\npower-over-ethernet\nexit"
         else:
-            command = f"interface {self._port}\nno shutdown\nexit"
+            command = f"interface 1/{self._port}\nno shutdown\nexit"
         
         success = await self._async_send_command(command)
         if success:
@@ -90,9 +90,9 @@ class ArubaSwitch(SwitchEntity):
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
         if self._is_poe:
-            command = f"interface {self._port}\nno power-over-ethernet\nexit"
+            command = f"interface 1/{self._port}\nno power-over-ethernet\nexit"
         else:
-            command = f"interface {self._port}\nshutdown\nexit"
+            command = f"interface 1/{self._port}\nshutdown\nexit"
         
         success = await self._async_send_command(command)
         if success:
@@ -103,10 +103,10 @@ class ArubaSwitch(SwitchEntity):
         """Update the switch state."""
         if self._is_poe:
             # Check PoE status
-            command = f"show power-over-ethernet {self._port}"
+            command = f"show power-over-ethernet 1/{self._port}"
         else:
             # Check interface status
-            command = f"show interface {self._port}"
+            command = f"show interface 1/{self._port}"
         
         success = await self._async_send_command(command, check_status=True)
         self._available = success

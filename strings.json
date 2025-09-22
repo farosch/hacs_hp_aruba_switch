@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Aruba Switch Configuration",
-        "description": "Enter the connection details for your Aruba switch.",
+        "description": "Enter the connection details for your Aruba switch. This will create controls for switch ports, PoE, and fan management.",
         "data": {
           "host": "Host (IP address or hostname)",
           "username": "Username",
@@ -19,6 +19,21 @@
     },
     "abort": {
       "already_configured": "Device is already configured"
+    }
+  },
+  "entity": {
+    "switch": {
+      "port": {
+        "name": "Port {port}"
+      },
+      "poe": {
+        "name": "PoE {port}"
+      }
+    },
+    "fan": {
+      "switch_fan": {
+        "name": "Switch Fan"
+      }
     }
   }
 }
