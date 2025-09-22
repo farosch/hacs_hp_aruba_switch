@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuration du Commutateur HP/Aruba",
+        "description": "Entrez les détails de connexion pour votre commutateur HP/Aruba. Cette intégration fournit le contrôle des ports du commutateur, la gestion PoE et le contrôle des ventilateurs via SSH.",
+        "data": {
+          "host": "Hôte (adresse IP ou nom d'hôte)",
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe",
+          "ssh_port": "Port SSH (défaut : 22)",
+          "exclude_ports": "Exclure les ports (séparés par des virgules, ex. 1,24)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion au commutateur. Veuillez vérifier l'hôte et la connectivité réseau.",
+      "invalid_auth": "Authentification invalide. Veuillez vérifier votre nom d'utilisateur et votre mot de passe.",
+      "unknown": "Erreur inattendue. Veuillez consulter les journaux pour plus de détails."
+    },
+    "abort": {
+      "already_configured": "L'appareil est déjà configuré"
+    }
+  },
+  "entity": {
+    "switch": {
+      "port": {
+        "name": "Port {port}"
+      },
+      "poe": {
+        "name": "PoE {port}"
+      }
+    },
+    "fan": {
+      "switch_fans": {
+        "name": "Ventilateurs du Commutateur"
+      }
+    }
+  }
+}

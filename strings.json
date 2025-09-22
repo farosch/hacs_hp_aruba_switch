@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Aruba Switch Configuration",
-        "description": "Enter the connection details for your Aruba switch. This will create controls for switch ports, PoE, and fan management.",
+        "title": "HP/Aruba Switch Configuration",
+        "description": "Enter the connection details for your HP/Aruba switch. This integration provides control over switch ports, PoE management, and fan control through SSH.",
         "data": {
           "host": "Host (IP address or hostname)",
           "username": "Username",
@@ -32,8 +32,8 @@
       }
     },
     "fan": {
-      "switch_fan": {
-        "name": "Switch Fan"
+      "switch_fans": {
+        "name": "Switch Fans"
       }
     }
   }

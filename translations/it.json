@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurazione Switch HP/Aruba",
+        "description": "Inserisci i dettagli di connessione per il tuo switch HP/Aruba. Questa integrazione fornisce il controllo delle porte dello switch, la gestione PoE e il controllo delle ventole tramite SSH.",
+        "data": {
+          "host": "Host (indirizzo IP o nome host)",
+          "username": "Nome utente",
+          "password": "Password",
+          "ssh_port": "Porta SSH (predefinita: 22)",
+          "exclude_ports": "Escludi porte (separate da virgola, es. 1,24)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Connessione allo switch fallita. Controlla l'host e la connettività di rete.",
+      "invalid_auth": "Autenticazione non valida. Controlla il tuo nome utente e password.",
+      "unknown": "Errore imprevisto. Controlla i log per maggiori dettagli."
+    },
+    "abort": {
+      "already_configured": "Il dispositivo è già configurato"
+    }
+  },
+  "entity": {
+    "switch": {
+      "port": {
+        "name": "Porta {port}"
+      },
+      "poe": {
+        "name": "PoE {port}"
+      }
+    },
+    "fan": {
+      "switch_fans": {
+        "name": "Ventole dello Switch"
+      }
+    }
+  }
+}

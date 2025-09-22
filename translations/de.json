@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HP/Aruba Switch Konfiguration",
+        "description": "Geben Sie die Verbindungsdetails für Ihren HP/Aruba Switch ein. Diese Integration bietet Kontrolle über Switch-Ports, PoE-Verwaltung und Lüftersteuerung über SSH.",
+        "data": {
+          "host": "Host (IP-Adresse oder Hostname)",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "ssh_port": "SSH-Port (Standard: 22)",
+          "exclude_ports": "Ports ausschließen (kommagetrennt, z.B. 1,24)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum Switch fehlgeschlagen. Bitte überprüfen Sie den Host und die Netzwerkverbindung.",
+      "invalid_auth": "Ungültige Authentifizierung. Bitte überprüfen Sie Ihren Benutzernamen und Ihr Passwort.",
+      "unknown": "Unerwarteter Fehler aufgetreten. Bitte überprüfen Sie die Logs für weitere Details."
+    },
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert"
+    }
+  },
+  "entity": {
+    "switch": {
+      "port": {
+        "name": "Port {port}"
+      },
+      "poe": {
+        "name": "PoE {port}"
+      }
+    },
+    "fan": {
+      "switch_fans": {
+        "name": "Switch-Lüfter"
+      }
+    }
+  }
+}
