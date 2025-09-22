@@ -56,7 +56,7 @@ This integration works with HP/Aruba switches that support SSH access, including
 ### Manual Installation
 
 1. Download the latest release
-2. Copy the `aruba_switch` folder to your `custom_components` directory
+2. Copy the `hp_aruba_switch` folder to your `custom_components` directory
 3. Restart Home Assistant
 
 ## Configuration
@@ -89,8 +89,8 @@ After successful configuration, the integration creates the following entities:
 
 ### Switch Entities
 For each port (e.g., port 1):
-- `switch.aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port control
-- `switch.aruba_switch_xxx_xxx_xxx_xxx_poe_1` - PoE control
+- `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port control
+- `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_poe_1` - PoE control
 
 All entities are automatically created and registered in Home Assistant with proper device information.
 
@@ -110,7 +110,7 @@ automation:
     action:
       service: switch.turn_off
       target:
-        entity_id: switch.aruba_switch_192_168_1_100_poe_1
+        entity_id: switch.hp_aruba_switch_192_168_1_100_poe_1
 ```
 
 **Monitor port status:**
@@ -119,7 +119,7 @@ automation:
   - alias: "Alert on port down"
     trigger:
       platform: state
-      entity_id: switch.aruba_switch_192_168_1_100_port_24
+      entity_id: switch.hp_aruba_switch_192_168_1_100_port_24
       to: 'off'
     action:
       service: notify.mobile_app
@@ -136,11 +136,11 @@ script:
     sequence:
       - service: switch.turn_off
         target:
-          entity_id: switch.aruba_switch_192_168_1_100_poe_1
+          entity_id: switch.hp_aruba_switch_192_168_1_100_poe_1
       - delay: "00:00:10"
       - service: switch.turn_on
         target:
-          entity_id: switch.aruba_switch_192_168_1_100_poe_1
+          entity_id: switch.hp_aruba_switch_192_168_1_100_poe_1
 ```
 
 ## Troubleshooting
@@ -170,15 +170,15 @@ Add to your `configuration.yaml`:
 logger:
   default: warning
   logs:
-    custom_components.aruba_switch: debug
+    custom_components.hp_aruba_switch: debug
     paramiko: debug
 ```
 
 ### Entity Naming
 
 Entities are named using the format:
-- `switch.aruba_switch_{ip_with_underscores}_{port}_{type}`
-- Example: `switch.aruba_switch_192_168_1_100_port_1`
+- `switch.hp_aruba_switch_{ip_with_underscores}_{port}_{type}`
+- Example: `switch.hp_aruba_switch_192_168_1_100_port_1`
 
 ## Switch Commands Used
 
@@ -188,7 +188,7 @@ The integration uses these switch commands:
 ```bash
 configure
 interface X
-no shutdown  # or shutdown
+enable  # or disable
 exit
 write mem
 exit
@@ -206,22 +206,11 @@ exit
 
 ### Status Checking
 ```bash
-show interface X
-show power-over-ethernet all
+show interface all
+show power-over-ethernet
 ```
 
 ## 🎯 **Performance & Reliability**
-```
-
-### Fan Control
-```bash
-configure
-fan auto  # or fan speed low/medium/high
-write mem
-exit
-```
-
-## Performance Considerations
 
 - **Update Intervals**: Switch entities update every 35 seconds with intelligent staggering
 - **Connection Limits**: Maximum 3 concurrent SSH connections
@@ -247,15 +236,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/hp-aruba-switch/issues)
+- **Issues**: [GitHub Issues](https://github.com/farosch/hacs_hp_aruba_switch/issues)
 - **Discussions**: [Home Assistant Community](https://community.home-assistant.io/)
 
 ---
 
 **Note**: This integration requires SSH access to your switch. Ensure you understand the security implications and follow your organization's security policies.
 
-[commits-shield]: https://img.shields.io/github/commit-activity/y/yourusername/hp-aruba-switch.svg?style=for-the-badge
-[commits]: https://github.com/yourusername/hp-aruba-switch/commits/main
-[license-shield]: https://img.shields.io/github/license/yourusername/hp-aruba-switch.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/yourusername/hp-aruba-switch.svg?style=for-the-badge
-[releases]: https://github.com/yourusername/hp-aruba-switch/releases
+[commits-shield]: https://img.shields.io/github/commit-activity/y/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
+[commits]: https://github.com/farosch/hacs_hp_aruba_switch/commits/main
+[license-shield]: https://img.shields.io/github/license/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
+[releases-shield]: https://img.shields.io/github/release/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
+[releases]: https://github.com/farosch/hacs_hp_aruba_switch/releases
