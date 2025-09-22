@@ -6,7 +6,7 @@
   "issue_tracker": "https://github.com/farosch/hacs_hp_aruba_switch/issues",
   "requirements": ["paramiko"],
   "dependencies": [],
-  "codeowners": [],
+  "codeowners": ["@farosch"],
   "config_flow": true,
   "integration_type": "hub",
   "iot_class": "local_polling",
