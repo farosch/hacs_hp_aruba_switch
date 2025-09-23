@@ -1,5 +1,15 @@
 # Release Notes
 
+## Version 1.0.2 - HACS Compatibility
+**September 23, 2025**
+
+### 🎉 Reworked Repository for HACS comptibility
+
+This version has been reworked to prepare for distributing this integration through HACS.
+
+---
+**Full documentation**: [README](https://github.com/farosch/hacs_hp_aruba_switch#readme)
+
 ## Version 1.0.1 - Initial Release
 **September 23, 2025**
 
