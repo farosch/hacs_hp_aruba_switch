@@ -210,8 +210,16 @@ class ArubaSwitch(SwitchEntity):
                 if self._is_poe:
                     # Parse PoE status from bulk query
                     power_enable = status.get("power_enable", False)
-                    poe_status = status.get("poe_status", False)
-                    self._is_on = power_enable and poe_status
+                    poe_status = status.get("poe_status", "off")
+                    
+                    # PoE is considered "on" if power is enabled and status indicates active power delivery
+                    poe_active = False
+                    if power_enable and isinstance(poe_status, str):
+                        poe_active = poe_status.lower() in ["delivering", "searching", "on", "enabled"]
+                    elif power_enable and isinstance(poe_status, bool):
+                        poe_active = poe_status  # Legacy boolean support
+                    
+                    self._is_on = poe_active
                     _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status}, final_state={self._is_on}")
                 else:
                     # Parse interface status from bulk query

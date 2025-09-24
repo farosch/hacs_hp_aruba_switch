@@ -246,14 +246,14 @@ class ArubaSSHManager:
                 _LOGGER.debug(f"Parsing interface line for port {current_interface}: {repr(line)}")
                 
                 # Check for port enabled/disabled status - handle multiple formats
-                if any(keyword in line_lower for keyword in ["port enabled", "enabled", "status"]):
+                if "port enabled" in line_lower:
                     # Look for enabled/disabled or yes/no indicators
                     if ":" in line:
                         value_part = line.split(":", 1)[1].strip().lower()
                         is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active"])
                         interfaces[current_interface]["port_enabled"] = is_enabled
                         link_details[current_interface]["port_enabled"] = is_enabled
-                        _LOGGER.debug(f"Found port status for {current_interface}: {is_enabled} (from '{value_part}')")
+                        _LOGGER.debug(f"Found port enabled status for {current_interface}: {is_enabled} (from '{value_part}')")
                 
                 # Check for link status
                 elif "link status" in line_lower:
@@ -262,7 +262,7 @@ class ArubaSSHManager:
                         link_up = "up" in value_part
                         interfaces[current_interface]["link_status"] = "up" if link_up else "down"
                         link_details[current_interface]["link_up"] = link_up
-                        _LOGGER.debug(f"Found link status for {current_interface}: {'up' if link_up else 'down'}")
+                        _LOGGER.debug(f"Found link status for {current_interface}: {'up' if link_up else 'down'} (from '{value_part}')")
                 
                 # Parse additional link details
                 elif "speed" in line_lower and (":" in line or "mbps" in line_lower or "gbps" in line_lower):
@@ -289,51 +289,59 @@ class ArubaSSHManager:
                         auto_enabled = any(pos in value_part for pos in ["yes", "enabled", "on", "active"])
                         link_details[current_interface]["auto_negotiation"] = "enabled" if auto_enabled else "disabled"
                 
-                # Parse statistics from the same output
-                elif any(keyword in line_lower for keyword in ["bytes received", "input bytes", "rx bytes"]):
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        statistics[current_interface]["bytes_in"] = numbers[0]
-                        _LOGGER.debug(f"Found bytes_in for {current_interface}: {numbers[0]}")
-                
-                elif any(keyword in line_lower for keyword in ["bytes transmitted", "output bytes", "tx bytes"]):
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        statistics[current_interface]["bytes_out"] = numbers[0]
-                        _LOGGER.debug(f"Found bytes_out for {current_interface}: {numbers[0]}")
-                
-                elif any(keyword in line_lower for keyword in ["packets received", "input packets", "rx packets"]):
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        statistics[current_interface]["packets_in"] = numbers[0]
-                        _LOGGER.debug(f"Found packets_in for {current_interface}: {numbers[0]}")
-                
-                elif any(keyword in line_lower for keyword in ["packets transmitted", "output packets", "tx packets"]):
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        statistics[current_interface]["packets_out"] = numbers[0]
-                        _LOGGER.debug(f"Found packets_out for {current_interface}: {numbers[0]}")
-                
-                # Alternative format: look for colon-separated values for statistics
+                # Parse statistics - handle HP/Aruba format with colons and commas
                 elif ":" in line:
                     parts = line.split(":", 1)
                     if len(parts) == 2:
                         key = parts[0].strip().lower()
                         value_str = parts[1].strip()
                         
-                        # Extract first number from value
-                        numbers = [int(s) for s in value_str.split() if s.isdigit()]
-                        if numbers:
-                            value = numbers[0]
-                            
-                            if "bytes" in key and ("in" in key or "received" in key or "rx" in key):
-                                statistics[current_interface]["bytes_in"] = value
-                            elif "bytes" in key and ("out" in key or "transmitted" in key or "tx" in key):
-                                statistics[current_interface]["bytes_out"] = value
-                            elif "packets" in key and ("in" in key or "received" in key or "rx" in key):
-                                statistics[current_interface]["packets_in"] = value
-                            elif "packets" in key and ("out" in key or "transmitted" in key or "tx" in key):
-                                statistics[current_interface]["packets_out"] = value
+                        # Helper function to extract numbers from comma-separated format
+                        def extract_numbers(text):
+                            import re
+                            # Find all numbers, handling commas as thousands separators
+                            numbers = []
+                            for match in re.finditer(r'(\d{1,3}(?:,\d{3})*)', text):
+                                number_str = match.group(1).replace(',', '')
+                                try:
+                                    numbers.append(int(number_str))
+                                except ValueError:
+                                    continue
+                            return numbers
+                        
+                        # Parse specific statistics formats
+                        if "bytes rx" in key and "bytes tx" in key.replace("bytes rx", ""):
+                            # Handle format: "Bytes Rx        : 58,481,022           Bytes Tx        : 59,025,203"
+                            numbers = extract_numbers(value_str)
+                            if len(numbers) >= 2:
+                                statistics[current_interface]["bytes_in"] = numbers[0]
+                                statistics[current_interface]["bytes_out"] = numbers[1]
+                                _LOGGER.debug(f"Found bytes for {current_interface}: in={numbers[0]}, out={numbers[1]}")
+                        elif "unicast rx" in key and "unicast tx" in key.replace("unicast rx", ""):
+                            # Handle format: "Unicast Rx      : 103,390              Unicast Tx      : 95,843"
+                            numbers = extract_numbers(value_str)
+                            if len(numbers) >= 2:
+                                statistics[current_interface]["packets_in"] = numbers[0]
+                                statistics[current_interface]["packets_out"] = numbers[1]
+                                _LOGGER.debug(f"Found unicast packets for {current_interface}: in={numbers[0]}, out={numbers[1]}")
+                        elif "bcast/mcast rx" in key and "bcast/mcast tx" in key.replace("bcast/mcast rx", ""):
+                            # Handle broadcast/multicast - add to existing packet counts
+                            numbers = extract_numbers(value_str)
+                            if len(numbers) >= 2:
+                                current_in = statistics[current_interface].get("packets_in", 0)
+                                current_out = statistics[current_interface].get("packets_out", 0)
+                                statistics[current_interface]["packets_in"] = current_in + numbers[0]
+                                statistics[current_interface]["packets_out"] = current_out + numbers[1]
+                                _LOGGER.debug(f"Added broadcast/multicast packets for {current_interface}: in={numbers[0]}, out={numbers[1]}")
+                        elif "bytes" in key and len(extract_numbers(value_str)) == 1:
+                            # Single value statistics
+                            numbers = extract_numbers(value_str)
+                            if numbers:
+                                value = numbers[0]
+                                if "rx" in key or "received" in key:
+                                    statistics[current_interface]["bytes_in"] = value
+                                elif "tx" in key or "transmitted" in key:
+                                    statistics[current_interface]["bytes_out"] = value
         
         _LOGGER.debug(f"Parsed {len(interfaces)} interfaces, {len(statistics)} statistics, and {len(link_details)} link details from bulk query")
         return interfaces, statistics, link_details
@@ -374,11 +382,22 @@ class ArubaSSHManager:
                 elif "poe port status" in line_lower or "poe status" in line_lower:
                     if ":" in line:
                         value_part = line.split(":", 1)[1].strip().lower()
-                        # PoE is considered "on" if it's delivering, searching, or enabled
-                        poe_active = any(status in value_part for status in 
-                            ["delivering", "searching", "enabled", "on", "active"])
-                        poe_ports[current_port]["poe_status"] = poe_active
-                        _LOGGER.debug(f"Found PoE status for {current_port}: {poe_active} (from '{value_part}')")
+                        # Extract the actual PoE status string
+                        poe_status_str = "off"  # default
+                        
+                        if "searching" in value_part:
+                            poe_status_str = "searching"
+                        elif "delivering" in value_part:
+                            poe_status_str = "delivering"
+                        elif "enabled" in value_part or "on" in value_part:
+                            poe_status_str = "on"
+                        elif "disabled" in value_part or "off" in value_part:
+                            poe_status_str = "off"
+                        elif "fault" in value_part or "error" in value_part:
+                            poe_status_str = "fault"
+                        
+                        poe_ports[current_port]["poe_status"] = poe_status_str
+                        _LOGGER.debug(f"Found PoE status for {current_port}: '{poe_status_str}' (from '{value_part}')")
         
         _LOGGER.debug(f"Parsed {len(poe_ports)} PoE ports from bulk query")
         return poe_ports
@@ -426,6 +445,12 @@ class ArubaSSHManager:
             except Exception as e:
                 _LOGGER.error(f"Failed to update bulk cache for {self.host}: {e}")
                 return False
+
+    async def force_cache_refresh(self) -> bool:
+        """Force an immediate cache refresh, ignoring timeout intervals."""
+        async with self._cache_lock:
+            self._last_bulk_update = 0  # Reset timestamp to force refresh
+        return await self.update_bulk_cache()
 
     async def get_port_status(self, port: str, is_poe: bool = False) -> dict:
         """Get cached status for a specific port."""
