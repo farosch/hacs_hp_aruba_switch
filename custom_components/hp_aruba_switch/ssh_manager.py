@@ -28,6 +28,8 @@ class ArubaSSHManager:
         # Bulk query caching
         self._interface_cache = {}
         self._poe_cache = {}
+        self._statistics_cache = {}  # Add statistics cache
+        self._link_cache = {}  # Add detailed link status cache
         self._cache_lock = asyncio.Lock()
         self._last_bulk_update = 0
         self._bulk_update_interval = 30  # Bulk update every 30 seconds
@@ -210,13 +212,15 @@ class ArubaSSHManager:
                     _LOGGER.debug(f"SSH command '{command}' failed for {self.host}: {e}")
                     return None
 
-    async def get_all_interface_status(self) -> dict:
-        """Get status for all interfaces in a single query."""
+    async def get_all_interface_status(self) -> tuple[dict, dict, dict]:
+        """Get status, statistics, and link details for all interfaces in a single query."""
         result = await self.execute_command("show interface all", timeout=15)
         if not result:
-            return {}
+            return {}, {}, {}
         
         interfaces = {}
+        statistics = {}
+        link_details = {}
         current_interface = None
         
         for line in result.split('\n'):
@@ -230,6 +234,11 @@ class ArubaSSHManager:
                     port_num = line.split("port")[-1].strip()
                     current_interface = port_num
                     interfaces[current_interface] = {"port_enabled": False, "link_status": "down"}
+                    statistics[current_interface] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+                    link_details[current_interface] = {
+                        "link_up": False, "port_enabled": False, "link_speed": "unknown",
+                        "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
+                    }
                 except:
                     continue
             elif current_interface:
@@ -243,18 +252,91 @@ class ArubaSSHManager:
                         value_part = line.split(":", 1)[1].strip().lower()
                         is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active"])
                         interfaces[current_interface]["port_enabled"] = is_enabled
+                        link_details[current_interface]["port_enabled"] = is_enabled
                         _LOGGER.debug(f"Found port status for {current_interface}: {is_enabled} (from '{value_part}')")
                 
                 # Check for link status
                 elif "link status" in line_lower:
                     if ":" in line:
                         value_part = line.split(":", 1)[1].strip().lower()
-                        link_status = "up" if "up" in value_part else "down"
-                        interfaces[current_interface]["link_status"] = link_status
-                        _LOGGER.debug(f"Found link status for {current_interface}: {link_status}")
+                        link_up = "up" in value_part
+                        interfaces[current_interface]["link_status"] = "up" if link_up else "down"
+                        link_details[current_interface]["link_up"] = link_up
+                        _LOGGER.debug(f"Found link status for {current_interface}: {'up' if link_up else 'down'}")
+                
+                # Parse additional link details
+                elif "speed" in line_lower and (":" in line or "mbps" in line_lower or "gbps" in line_lower):
+                    # Extract speed value
+                    import re
+                    speed_match = re.search(r'(\d+)\s*(mbps|gbps|mb|gb)', line_lower)
+                    if speed_match:
+                        speed_val = speed_match.group(1)
+                        speed_unit = speed_match.group(2)
+                        if "gb" in speed_unit:
+                            link_details[current_interface]["link_speed"] = f"{speed_val} Gbps"
+                        else:
+                            link_details[current_interface]["link_speed"] = f"{speed_val} Mbps"
+                
+                elif "duplex" in line_lower:
+                    if "full" in line_lower:
+                        link_details[current_interface]["duplex"] = "full"
+                    elif "half" in line_lower:
+                        link_details[current_interface]["duplex"] = "half"
+                
+                elif ("auto" in line_lower and "neg" in line_lower) or "autoneg" in line_lower:
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        auto_enabled = any(pos in value_part for pos in ["yes", "enabled", "on", "active"])
+                        link_details[current_interface]["auto_negotiation"] = "enabled" if auto_enabled else "disabled"
+                
+                # Parse statistics from the same output
+                elif any(keyword in line_lower for keyword in ["bytes received", "input bytes", "rx bytes"]):
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        statistics[current_interface]["bytes_in"] = numbers[0]
+                        _LOGGER.debug(f"Found bytes_in for {current_interface}: {numbers[0]}")
+                
+                elif any(keyword in line_lower for keyword in ["bytes transmitted", "output bytes", "tx bytes"]):
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        statistics[current_interface]["bytes_out"] = numbers[0]
+                        _LOGGER.debug(f"Found bytes_out for {current_interface}: {numbers[0]}")
+                
+                elif any(keyword in line_lower for keyword in ["packets received", "input packets", "rx packets"]):
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        statistics[current_interface]["packets_in"] = numbers[0]
+                        _LOGGER.debug(f"Found packets_in for {current_interface}: {numbers[0]}")
+                
+                elif any(keyword in line_lower for keyword in ["packets transmitted", "output packets", "tx packets"]):
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        statistics[current_interface]["packets_out"] = numbers[0]
+                        _LOGGER.debug(f"Found packets_out for {current_interface}: {numbers[0]}")
+                
+                # Alternative format: look for colon-separated values for statistics
+                elif ":" in line:
+                    parts = line.split(":", 1)
+                    if len(parts) == 2:
+                        key = parts[0].strip().lower()
+                        value_str = parts[1].strip()
+                        
+                        # Extract first number from value
+                        numbers = [int(s) for s in value_str.split() if s.isdigit()]
+                        if numbers:
+                            value = numbers[0]
+                            
+                            if "bytes" in key and ("in" in key or "received" in key or "rx" in key):
+                                statistics[current_interface]["bytes_in"] = value
+                            elif "bytes" in key and ("out" in key or "transmitted" in key or "tx" in key):
+                                statistics[current_interface]["bytes_out"] = value
+                            elif "packets" in key and ("in" in key or "received" in key or "rx" in key):
+                                statistics[current_interface]["packets_in"] = value
+                            elif "packets" in key and ("out" in key or "transmitted" in key or "tx" in key):
+                                statistics[current_interface]["packets_out"] = value
         
-        _LOGGER.debug(f"Parsed {len(interfaces)} interfaces from bulk query")
-        return interfaces
+        _LOGGER.debug(f"Parsed {len(interfaces)} interfaces, {len(statistics)} statistics, and {len(link_details)} link details from bulk query")
+        return interfaces, statistics, link_details
 
     async def get_all_poe_status(self) -> dict:
         """Get PoE status for all ports in a single query."""
@@ -312,19 +394,23 @@ class ArubaSSHManager:
                 return True  # Cache is still fresh
             
             try:
-                # Get both interface and PoE data concurrently
+                # Get interface+statistics and PoE data concurrently
                 interface_task = asyncio.create_task(self.get_all_interface_status())
                 poe_task = asyncio.create_task(self.get_all_poe_status())
                 
-                self._interface_cache, self._poe_cache = await asyncio.gather(
+                interface_result, self._poe_cache = await asyncio.gather(
                     interface_task, poe_task, return_exceptions=True
                 )
                 
-                # Handle any exceptions
-                if isinstance(self._interface_cache, Exception):
-                    _LOGGER.warning(f"Failed to update interface cache: {self._interface_cache}")
+                # Handle interface result (now returns 3-tuple)
+                if isinstance(interface_result, Exception):
+                    _LOGGER.warning(f"Failed to update interface cache: {interface_result}")
                     self._interface_cache = {}
+                    self._statistics_cache = {}
+                    self._link_cache = {}
                     return False
+                else:
+                    self._interface_cache, self._statistics_cache, self._link_cache = interface_result
                     
                 if isinstance(self._poe_cache, Exception):
                     _LOGGER.warning(f"Failed to update PoE cache: {self._poe_cache}")
@@ -332,7 +418,9 @@ class ArubaSSHManager:
                     return False
                 
                 self._last_bulk_update = current_time
-                _LOGGER.debug(f"Updated bulk cache with {len(self._interface_cache)} interfaces and {len(self._poe_cache)} PoE ports")
+                _LOGGER.debug(f"Updated bulk cache with {len(self._interface_cache)} interfaces, "
+                            f"{len(self._statistics_cache)} statistics, {len(self._link_cache)} link details, "
+                            f"and {len(self._poe_cache)} PoE ports")
                 return True
                 
             except Exception as e:
@@ -350,178 +438,30 @@ class ArubaSSHManager:
                 return self._interface_cache.get(port, {"port_enabled": False, "link_status": "down"})
 
     async def get_port_statistics(self, port: str) -> dict:
-        """Get traffic statistics for a specific port."""
-        try:
-            command = f"show interface {port} counters"
-            result = await self.execute_command(command, timeout=10)
-            
-            if not result:
-                return {}
-        except Exception as e:
-            _LOGGER.debug(f"Failed to get statistics for port {port}: {e}")
-            return {}
+        """Get cached traffic statistics for a specific port."""
+        await self.update_bulk_cache()
         
-        stats = {
-            "bytes_in": 0,
-            "bytes_out": 0,
-            "packets_in": 0,
-            "packets_out": 0
-        }
-        
-        try:
-            for line in result.split('\n'):
-                line = line.strip()
-                if not line:
-                    continue
-                
-                line_lower = line.lower()
-                _LOGGER.debug(f"Parsing statistics line for port {port}: {repr(line)}")
-                
-                # Look for various counter formats
-                if "bytes received" in line_lower or "input bytes" in line_lower or "rx bytes" in line_lower:
-                    # Extract numeric value
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        stats["bytes_in"] = numbers[0]
-                        _LOGGER.debug(f"Found bytes_in for port {port}: {numbers[0]}")
-                
-                elif "bytes transmitted" in line_lower or "output bytes" in line_lower or "tx bytes" in line_lower:
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        stats["bytes_out"] = numbers[0]
-                        _LOGGER.debug(f"Found bytes_out for port {port}: {numbers[0]}")
-                
-                elif "packets received" in line_lower or "input packets" in line_lower or "rx packets" in line_lower:
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        stats["packets_in"] = numbers[0]
-                        _LOGGER.debug(f"Found packets_in for port {port}: {numbers[0]}")
-                
-                elif "packets transmitted" in line_lower or "output packets" in line_lower or "tx packets" in line_lower:
-                    numbers = [int(s) for s in line.split() if s.isdigit()]
-                    if numbers:
-                        stats["packets_out"] = numbers[0]
-                        _LOGGER.debug(f"Found packets_out for port {port}: {numbers[0]}")
-                
-                # Alternative format: look for colon-separated values
-                elif ":" in line:
-                    parts = line.split(":", 1)
-                    if len(parts) == 2:
-                        key = parts[0].strip().lower()
-                        value_str = parts[1].strip()
-                        
-                        # Extract first number from value
-                        numbers = [int(s) for s in value_str.split() if s.isdigit()]
-                        if numbers:
-                            value = numbers[0]
-                            
-                            if "bytes" in key and ("in" in key or "received" in key or "rx" in key):
-                                stats["bytes_in"] = value
-                            elif "bytes" in key and ("out" in key or "transmitted" in key or "tx" in key):
-                                stats["bytes_out"] = value
-                            elif "packets" in key and ("in" in key or "received" in key or "rx" in key):
-                                stats["packets_in"] = value
-                            elif "packets" in key and ("out" in key or "transmitted" in key or "tx" in key):
-                                stats["packets_out"] = value
-            
-            _LOGGER.debug(f"Final statistics for port {port}: {stats}")
-            return stats
-            
-        except Exception as e:
-            _LOGGER.warning(f"Failed to parse statistics for port {port}: {e}")
-            return {}
+        async with self._cache_lock:
+            return self._statistics_cache.get(port, {
+                "bytes_in": 0,
+                "bytes_out": 0,
+                "packets_in": 0,
+                "packets_out": 0
+            })
 
     async def get_port_link_status(self, port: str) -> dict:
-        """Get detailed link status information for a specific port."""
-        try:
-            # Use "show interfaces port-x detail" for more comprehensive information
-            command = f"show interface {port}"
-            result = await self.execute_command(command, timeout=10)
-            
-            if not result:
-                return {}
-        except Exception as e:
-            _LOGGER.debug(f"Failed to get link status for port {port}: {e}")
-            return {}
+        """Get cached detailed link status information for a specific port."""
+        await self.update_bulk_cache()
         
-        status = {
-            "link_up": False,
-            "port_enabled": False,
-            "link_speed": "unknown",
-            "duplex": "unknown", 
-            "auto_negotiation": "unknown",
-            "cable_type": "unknown"
-        }
-        
-        try:
-            for line in result.split('\n'):
-                line = line.strip()
-                if not line:
-                    continue
-                
-                line_lower = line.lower()
-                _LOGGER.debug(f"Parsing link status line for port {port}: {repr(line)}")
-                
-                # Look for link status indicators
-                if "link status" in line_lower or "status" in line_lower:
-                    if ":" in line:
-                        value_part = line.split(":", 1)[1].strip().lower()
-                        status["link_up"] = "up" in value_part
-                        _LOGGER.debug(f"Found link status for port {port}: {'up' if status['link_up'] else 'down'}")
-                
-                # Look for port enabled/disabled status
-                elif ("port enabled" in line_lower or "enabled" in line_lower or 
-                      "admin" in line_lower) and "status" in line_lower:
-                    if ":" in line:
-                        value_part = line.split(":", 1)[1].strip().lower()
-                        is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active"])
-                        status["port_enabled"] = is_enabled
-                        _LOGGER.debug(f"Found admin status for port {port}: {'enabled' if is_enabled else 'disabled'}")
-                
-                # Look for speed information
-                elif "speed" in line_lower and (":" in line or "mbps" in line_lower or "gbps" in line_lower):
-                    # Extract speed value
-                    import re
-                    speed_match = re.search(r'(\d+)\s*(mbps|gbps|mb|gb)', line_lower)
-                    if speed_match:
-                        speed_val = speed_match.group(1)
-                        speed_unit = speed_match.group(2)
-                        if "gb" in speed_unit:
-                            status["link_speed"] = f"{speed_val} Gbps"
-                        else:
-                            status["link_speed"] = f"{speed_val} Mbps"
-                        _LOGGER.debug(f"Found speed for port {port}: {status['link_speed']}")
-                
-                # Look for duplex information  
-                elif "duplex" in line_lower:
-                    if "full" in line_lower:
-                        status["duplex"] = "full"
-                    elif "half" in line_lower:
-                        status["duplex"] = "half"
-                    _LOGGER.debug(f"Found duplex for port {port}: {status['duplex']}")
-                
-                # Look for auto-negotiation
-                elif ("auto" in line_lower and "neg" in line_lower) or "autoneg" in line_lower:
-                    if ":" in line:
-                        value_part = line.split(":", 1)[1].strip().lower()
-                        auto_enabled = any(pos in value_part for pos in ["yes", "enabled", "on", "active"])
-                        status["auto_negotiation"] = "enabled" if auto_enabled else "disabled"
-                        _LOGGER.debug(f"Found auto-neg for port {port}: {status['auto_negotiation']}")
-                
-                # Look for cable type information
-                elif ("cable" in line_lower or "media" in line_lower or "type" in line_lower) and ":" in line:
-                    value_part = line.split(":", 1)[1].strip()
-                    if any(cable_type in value_part.lower() for cable_type in 
-                          ["copper", "fiber", "sfp", "1000base-t", "1000base-sx", "10gbase"]):
-                        status["cable_type"] = value_part
-                        _LOGGER.debug(f"Found cable type for port {port}: {status['cable_type']}")
-            
-            _LOGGER.debug(f"Final link status for port {port}: {status}")
-            return status
-            
-        except Exception as e:
-            _LOGGER.warning(f"Failed to parse link status for port {port}: {e}")
-            return {}
+        async with self._cache_lock:
+            return self._link_cache.get(port, {
+                "link_up": False,
+                "port_enabled": False,
+                "link_speed": "unknown",
+                "duplex": "unknown", 
+                "auto_negotiation": "unknown",
+                "cable_type": "unknown"
+            })
 
 # Global connection managers
 _connection_managers: Dict[str, ArubaSSHManager] = {}
