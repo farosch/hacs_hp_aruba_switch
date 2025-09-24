@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/farosch/hacs_hp_aruba_switch/issues",
   "loggers": ["paramiko"],
   "requirements": ["paramiko"],
-  "version": "1.0.6"
+  "version": "1.0.7"
 }

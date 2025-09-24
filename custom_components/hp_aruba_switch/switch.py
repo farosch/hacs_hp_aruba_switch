@@ -77,6 +77,21 @@ class ArubaSwitch(SwitchEntity):
         else:
             self._attr_icon = "mdi:ethernet"
             
+        # Initialize extra state attributes to expose all port data
+        self._attr_extra_state_attributes = {
+            "port_number": port,
+            "link_status": "unknown",
+            "link_speed": "unknown",
+            "duplex": "unknown",
+            "auto_negotiation": "unknown",
+            "cable_type": "unknown",
+            "bytes_in": 0,
+            "bytes_out": 0,
+            "packets_in": 0,
+            "packets_out": 0,
+            "last_update": "never"
+        }
+            
         self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
         self._last_update = 0
         self._update_interval = 35  # Reduced since bulk queries are more efficient
@@ -106,6 +121,11 @@ class ArubaSwitch(SwitchEntity):
     def available(self):
         """Return if entity is available."""
         return self._available
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attr_extra_state_attributes
 
     @property
     def device_info(self):
@@ -176,12 +196,17 @@ class ArubaSwitch(SwitchEntity):
         self._last_update = current_time
         
         try:
-            # Use bulk query method instead of individual queries
+            # Get all available data for this port
             status = await self._ssh_manager.get_port_status(self._port, self._is_poe)
-            _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} status: {status}")
+            statistics = await self._ssh_manager.get_port_statistics(self._port)
+            link_details = await self._ssh_manager.get_port_link_status(self._port)
+            
+            _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} - status: {status}, stats: {statistics}, link: {link_details}")
             
             if status:
                 self._available = True
+                
+                # Update main entity state
                 if self._is_poe:
                     # Parse PoE status from bulk query
                     power_enable = status.get("power_enable", False)
@@ -195,6 +220,36 @@ class ArubaSwitch(SwitchEntity):
                     link_up = status.get("link_status", "down").lower() == "up"
                     self._is_on = port_enabled  # Only check if port is administratively enabled
                     _LOGGER.debug(f"Interface port {self._port}: port_enabled={port_enabled}, link_up={link_up}, final_state={self._is_on}")
+                
+                # Update all attributes with comprehensive port information
+                import datetime
+                self._attr_extra_state_attributes.update({
+                    "port_number": self._port,
+                    "link_status": "up" if link_details.get("link_up", False) else "down",
+                    "link_speed": link_details.get("link_speed", "unknown"),
+                    "duplex": link_details.get("duplex", "unknown"),
+                    "auto_negotiation": link_details.get("auto_negotiation", "unknown"),
+                    "cable_type": link_details.get("cable_type", "unknown"),
+                    "bytes_in": statistics.get("bytes_in", 0),
+                    "bytes_out": statistics.get("bytes_out", 0),
+                    "packets_in": statistics.get("packets_in", 0),
+                    "packets_out": statistics.get("packets_out", 0),
+                    "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Add PoE-specific attributes if this is a PoE entity
+                if self._is_poe:
+                    self._attr_extra_state_attributes.update({
+                        "power_enable": status.get("power_enable", False),
+                        "poe_status": status.get("poe_status", False)
+                    })
+                else:
+                    # Add port-specific attributes for non-PoE entities
+                    self._attr_extra_state_attributes.update({
+                        "port_enabled": status.get("port_enabled", False),
+                        "admin_status": "enabled" if status.get("port_enabled", False) else "disabled"
+                    })
+                
             else:
                 self._available = False
                 _LOGGER.debug(f"No status data received for port {self._port} {'PoE' if self._is_poe else ''}")

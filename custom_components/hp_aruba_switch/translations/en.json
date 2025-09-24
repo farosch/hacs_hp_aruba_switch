@@ -36,6 +36,9 @@
     "sensor": {
       "activity": {
         "name": "Port {port} Activity"
+      },
+      "diagnostics": {
+        "name": "Switch Diagnostics"
       }
     },
     "binary_sensor": {
