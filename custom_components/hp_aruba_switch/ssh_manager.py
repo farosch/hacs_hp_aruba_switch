@@ -273,21 +273,28 @@ class ArubaSSHManager:
                         speed_val = speed_match.group(1)
                         speed_unit = speed_match.group(2)
                         if "gb" in speed_unit:
-                            link_details[current_interface]["link_speed"] = f"{speed_val} Gbps"
+                            speed_str = f"{speed_val} Gbps"
+                            link_details[current_interface]["link_speed"] = speed_str
                         else:
-                            link_details[current_interface]["link_speed"] = f"{speed_val} Mbps"
+                            speed_str = f"{speed_val} Mbps"
+                            link_details[current_interface]["link_speed"] = speed_str
+                        _LOGGER.debug(f"Found link speed for {current_interface}: {speed_str} (from '{line.strip()}')")
                 
                 elif "duplex" in line_lower:
                     if "full" in line_lower:
                         link_details[current_interface]["duplex"] = "full"
+                        _LOGGER.debug(f"Found duplex for {current_interface}: full (from '{line.strip()}')")
                     elif "half" in line_lower:
                         link_details[current_interface]["duplex"] = "half"
+                        _LOGGER.debug(f"Found duplex for {current_interface}: half (from '{line.strip()}')")
                 
                 elif ("auto" in line_lower and "neg" in line_lower) or "autoneg" in line_lower:
                     if ":" in line:
                         value_part = line.split(":", 1)[1].strip().lower()
                         auto_enabled = any(pos in value_part for pos in ["yes", "enabled", "on", "active"])
-                        link_details[current_interface]["auto_negotiation"] = "enabled" if auto_enabled else "disabled"
+                        auto_status = "enabled" if auto_enabled else "disabled"
+                        link_details[current_interface]["auto_negotiation"] = auto_status
+                        _LOGGER.debug(f"Found auto-negotiation for {current_interface}: {auto_status} (from '{value_part}')")
                 
                 # Parse statistics - handle HP/Aruba format with colons and commas
                 elif ":" in line:
@@ -340,17 +347,39 @@ class ArubaSSHManager:
                                 value = numbers[0]
                                 if "rx" in key or "received" in key:
                                     statistics[current_interface]["bytes_in"] = value
+                                    _LOGGER.debug(f"Found bytes_in for {current_interface}: {value} (from '{key}: {value_str}')")
                                 elif "tx" in key or "transmitted" in key:
                                     statistics[current_interface]["bytes_out"] = value
+                                    _LOGGER.debug(f"Found bytes_out for {current_interface}: {value} (from '{key}: {value_str}')")
         
         _LOGGER.debug(f"Parsed {len(interfaces)} interfaces, {len(statistics)} statistics, and {len(link_details)} link details from bulk query")
         return interfaces, statistics, link_details
 
     async def get_all_poe_status(self) -> dict:
         """Get PoE status for all ports in a single query."""
-        result = await self.execute_command("show power-over-ethernet all", timeout=15)
+        # Try different PoE commands based on switch model
+        commands = [
+            "show power-over-ethernet all",
+            "show power-over-ethernet",
+            "show poe status",
+            "show interface brief power-over-ethernet"
+        ]
+        
+        result = None
+        for cmd in commands:
+            result = await self.execute_command(cmd, timeout=15)
+            if result and "invalid" not in result.lower() and "error" not in result.lower():
+                _LOGGER.debug(f"PoE command '{cmd}' succeeded")
+                break
+            else:
+                _LOGGER.debug(f"PoE command '{cmd}' failed or returned error")
+        
         if not result:
+            _LOGGER.warning("All PoE commands failed")
             return {}
+        
+        # Log the raw PoE output for debugging
+        _LOGGER.debug(f"Raw PoE output:\n{result}")
         
         poe_ports = {}
         current_port = None
@@ -360,44 +389,115 @@ class ArubaSSHManager:
             if not line:
                 continue
                 
-            # Look for port headers like "Status and Configuration Information for port X"
-            if "information for port" in line.lower():
-                try:
-                    port_num = line.split("port")[-1].strip()
-                    current_port = port_num
-                    poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
-                except:
-                    continue
+            # Look for port headers - handle multiple formats
+            port_header_patterns = [
+                "information for port",  # "Status and Configuration Information for port X"
+                "port status",           # "Port Status X"
+                "interface",             # "Interface X" or "Interface GigabitEthernet X"
+                "gi",                    # "GigabitEthernet X/X/X" 
+                "^[0-9]+[/]*[0-9]*\s"   # Direct port numbers like "1/1", "24", etc.
+            ]
+            
+            line_lower = line.lower()
+            port_found = False
+            
+            for pattern in port_header_patterns:
+                if pattern == "^[0-9]+[/]*[0-9]*\s":
+                    # Handle direct port number lines (regex-like check)
+                    import re
+                    if re.match(r'^\s*\d+(/\d+)?\s+', line):
+                        try:
+                            current_port = line.split()[0]
+                            poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
+                            _LOGGER.debug(f"Found PoE port header (direct): {current_port}")
+                            port_found = True
+                            break
+                        except:
+                            continue
+                elif pattern in line_lower:
+                    try:
+                        if "port" in pattern:
+                            port_num = line.split("port")[-1].strip()
+                        elif "interface" in pattern:
+                            # Handle "Interface X" or "Interface GigabitEthernet X/X/X"
+                            parts = line.split()
+                            port_num = parts[-1] if parts else ""
+                        else:
+                            port_num = line.split()[-1] if line.split() else ""
+                        
+                        if port_num and port_num.replace('/', '').replace('.', '').isdigit():
+                            current_port = port_num
+                            poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
+                            _LOGGER.debug(f"Found PoE port header ({pattern}): {current_port}")
+                            port_found = True
+                            break
+                    except:
+                        continue
+            
+            if port_found:
+                continue
             elif current_port:
                 line_lower = line.lower()
                 _LOGGER.debug(f"Parsing PoE line for port {current_port}: {repr(line)}")
                 
-                if "power enable" in line_lower:
-                    if ":" in line:
-                        value_part = line.split(":", 1)[1].strip().lower()
-                        is_enabled = "yes" in value_part
+                # Generic handler for combined lines (multiple key:value pairs on one line)
+                # This handles HP/Aruba format where multiple fields are on the same line
+                def parse_combined_line(line_text):
+                    """Parse a line that may contain multiple key:value pairs."""
+                    parsed_fields = {}
+                    
+                    # Split by multiple spaces to find field boundaries
+                    import re
+                    # Look for pattern: "Key : Value" followed by spaces and another "Key : Value"
+                    matches = re.findall(r'([^:]+?)\s*:\s*([^:]*?)(?=\s{3,}[^:]+\s*:|$)', line_text)
+                    
+                    for key, value in matches:
+                        key = key.strip().lower()
+                        value = value.strip().lower()
+                        parsed_fields[key] = value
+                    
+                    return parsed_fields
+                
+                # Parse the line for multiple key:value pairs
+                parsed_data = parse_combined_line(line)
+                
+                # Process each parsed field
+                for key, value in parsed_data.items():
+                    if "power enable" in key:
+                        is_enabled = "yes" in value
                         poe_ports[current_port]["power_enable"] = is_enabled
-                        _LOGGER.debug(f"Found PoE power enable for {current_port}: {is_enabled}")
-                        
-                elif "poe port status" in line_lower or "poe status" in line_lower:
-                    if ":" in line:
-                        value_part = line.split(":", 1)[1].strip().lower()
-                        # Extract the actual PoE status string
+                        _LOGGER.debug(f"Found PoE power enable for {current_port}: {is_enabled} (from '{value}')")
+                    
+                    elif "poe port status" in key or "poe status" in key:
                         poe_status_str = "off"  # default
                         
-                        if "searching" in value_part:
+                        if "searching" in value:
                             poe_status_str = "searching"
-                        elif "delivering" in value_part:
+                        elif "delivering" in value or "deliver" in value:
                             poe_status_str = "delivering"
-                        elif "enabled" in value_part or "on" in value_part:
+                        elif "enabled" in value or "on" in value or "active" in value:
                             poe_status_str = "on"
-                        elif "disabled" in value_part or "off" in value_part:
+                        elif "disabled" in value or "off" in value or "inactive" in value:
                             poe_status_str = "off"
-                        elif "fault" in value_part or "error" in value_part:
+                        elif "fault" in value or "error" in value or "overload" in value:
                             poe_status_str = "fault"
+                        elif "denied" in value or "reject" in value:
+                            poe_status_str = "denied"
                         
                         poe_ports[current_port]["poe_status"] = poe_status_str
-                        _LOGGER.debug(f"Found PoE status for {current_port}: '{poe_status_str}' (from '{value_part}')")
+                        _LOGGER.debug(f"Found PoE status for {current_port}: '{poe_status_str}' (from '{value}')")
+                
+                # Check for power consumption as additional PoE status indicator
+                for key, value in parsed_data.items():
+                    if any(keyword in key for keyword in ["power draw", "power consumption", "power usage"]) and "w" in value:
+                        import re
+                        power_match = re.search(r'(\d+(?:\.\d+)?)\s*w', value)
+                        if power_match:
+                            power_value = float(power_match.group(1))
+                            if power_value > 0:
+                                # Override status if we see actual power consumption > 0
+                                poe_ports[current_port]["poe_status"] = "delivering" 
+                                _LOGGER.debug(f"Found PoE power consumption for {current_port}: {power_value}W - overriding status to 'delivering'")
         
         _LOGGER.debug(f"Parsed {len(poe_ports)} PoE ports from bulk query")
         return poe_ports
