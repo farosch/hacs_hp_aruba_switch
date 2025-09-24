@@ -449,12 +449,15 @@ class ArubaSSHManager:
 
     async def get_interface_brief_info(self) -> dict:
         """Get interface brief information for speed/duplex data."""
-        # Try different brief commands
+        # Try different brief commands (consolidated from both methods)
         brief_commands = [
             "show interface brief",
             "show interfaces brief", 
             "show int brief",
-            "show interface status"
+            "show interface status",
+            "show port brief",
+            "show ports brief",
+            "show vlan ports all brief"
         ]
         
         result = None
@@ -552,6 +555,25 @@ class ArubaSSHManager:
                             _LOGGER.debug(f"Could not parse brief line: {repr(line)} - {e}")
                             continue
         
+        # If tabular parsing failed, try alternative port extraction
+        if not brief_info and result:
+            _LOGGER.debug(f"Tabular parsing failed, trying alternative port extraction from brief output")
+            import re
+            # Look for port numbers in various formats as fallback
+            for match in re.finditer(r'(?:^|\s)(\d+)(?:\s|$|/)', result, re.MULTILINE):
+                port_num = match.group(1)
+                if port_num.isdigit() and 1 <= int(port_num) <= 48:  # Reasonable port range
+                    if port_num not in brief_info:
+                        brief_info[port_num] = {
+                            "port_enabled": True,  # Default assumption
+                            "link_up": False,      # Default assumption
+                            "link_speed_mbps": 0,
+                            "duplex": "unknown",
+                            "mode": "unknown",
+                            "mdi": "unknown"
+                        }
+            _LOGGER.debug(f"Alternative extraction found {len(brief_info)} ports")
+        
         _LOGGER.debug(f"Parsed brief info for {len(brief_info)} ports")
         return brief_info
 
@@ -563,49 +585,45 @@ class ArubaSSHManager:
         statistics = {}
         link_details = {}
         
-        # Try to get basic port list first
-        port_list_commands = [
-            "show interface brief",
-            "show interfaces brief", 
-            "show port brief",
-            "show ports brief",
-            "show vlan ports all brief"
-        ]
+        # Use the existing brief info method instead of duplicating commands
+        brief_info = await self.get_interface_brief_info()
         
-        port_result = None
-        for cmd in port_list_commands:
-            port_result = await self.execute_command(cmd, timeout=10)
-            if port_result and "port" in port_result.lower():
-                _LOGGER.debug(f"Got port list using '{cmd}': {repr(port_result[:500])}")
-                break
-        
-        # Extract port numbers from the output
-        port_numbers = []
-        if port_result:
-            import re
-            # Look for port numbers in various formats
-            for match in re.finditer(r'(?:^|\s)(\d+)(?:\s|$|/)', port_result, re.MULTILINE):
-                port_num = match.group(1)
-                if port_num.isdigit() and 1 <= int(port_num) <= 48:  # Reasonable port range
-                    port_numbers.append(port_num)
-        
-        # If we couldn't extract ports, create a default range
-        if not port_numbers:
-            _LOGGER.warning(f"Could not extract port numbers for {self.host}, using default range 1-24")
-            port_numbers = [str(i) for i in range(1, 25)]
+        if brief_info:
+            # Extract port numbers and basic info from brief data
+            port_numbers = list(brief_info.keys())
+            _LOGGER.info(f"Found {len(port_numbers)} ports from brief info for {self.host}: {port_numbers[:10]}{'...' if len(port_numbers) > 10 else ''}")
+            
+            # Initialize data using brief info
+            for port_num in port_numbers:
+                port_data = brief_info[port_num]
+                interfaces[port_num] = {
+                    "port_enabled": port_data.get("port_enabled", False),
+                    "link_status": "up" if port_data.get("link_up", False) else "down"
+                }
+                statistics[port_num] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+                link_details[port_num] = {
+                    "link_up": port_data.get("link_up", False),
+                    "port_enabled": port_data.get("port_enabled", False),
+                    "link_speed": f"{port_data['link_speed_mbps']} Mbps" if port_data.get("link_speed_mbps", 0) > 0 else "unknown",
+                    "duplex": port_data.get("duplex", "unknown"),
+                    "auto_negotiation": "unknown",
+                    "cable_type": "unknown",
+                    "mode": port_data.get("mode", "unknown"),
+                    "mdi": port_data.get("mdi", "unknown")
+                }
         else:
-            # Remove duplicates and sort
-            port_numbers = sorted(list(set(port_numbers)), key=int)
-            _LOGGER.info(f"Found {len(port_numbers)} ports for {self.host}: {port_numbers[:10]}{'...' if len(port_numbers) > 10 else ''}")
-        
-        # Initialize empty data for each port
-        for port_num in port_numbers:
-            interfaces[port_num] = {"port_enabled": False, "link_status": "down"}
-            statistics[port_num] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
-            link_details[port_num] = {
-                "link_up": False, "port_enabled": False, "link_speed": "unknown",
-                "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
-            }
+            # Fallback to default port range if brief info fails
+            _LOGGER.warning(f"Brief info failed for {self.host}, using default range 1-24")
+            port_numbers = [str(i) for i in range(1, 25)]
+            
+            # Initialize empty data for each port
+            for port_num in port_numbers:
+                interfaces[port_num] = {"port_enabled": False, "link_status": "down"}
+                statistics[port_num] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+                link_details[port_num] = {
+                    "link_up": False, "port_enabled": False, "link_speed": "unknown",
+                    "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
+                }
         
         # Try to get statistics with different commands
         stats_commands = [
