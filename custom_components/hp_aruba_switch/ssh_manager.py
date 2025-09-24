@@ -395,14 +395,14 @@ class ArubaSSHManager:
                 "port status",           # "Port Status X"
                 "interface",             # "Interface X" or "Interface GigabitEthernet X"
                 "gi",                    # "GigabitEthernet X/X/X" 
-                "^[0-9]+[/]*[0-9]*\s"   # Direct port numbers like "1/1", "24", etc.
+                r"^[0-9]+[/]*[0-9]*\s"   # Direct port numbers like "1/1", "24", etc.
             ]
             
             line_lower = line.lower()
             port_found = False
             
             for pattern in port_header_patterns:
-                if pattern == "^[0-9]+[/]*[0-9]*\s":
+                if pattern == r"^[0-9]+[/]*[0-9]*\s":
                     # Handle direct port number lines (regex-like check)
                     import re
                     if re.match(r'^\s*\d+(/\d+)?\s+', line):
