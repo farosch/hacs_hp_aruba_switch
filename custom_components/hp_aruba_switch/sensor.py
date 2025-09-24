@@ -35,11 +35,19 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for port in ports:
         # Add port activity sensor for ALL ports (exclusion lists don't apply to sensors)
         entities.append(ArubaPortActivitySensor(host, username, password, ssh_port, port, config_entry.entry_id))
+        
+        # Add individual statistic sensors for each port
+        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in"))
+        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out"))
+        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in"))
+        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out"))
+        entities.append(ArubaPortLinkStatusSensor(host, username, password, ssh_port, port, config_entry.entry_id))
+        entities.append(ArubaPortSpeedSensor(host, username, password, ssh_port, port, config_entry.entry_id))
 
     # Add a comprehensive switch diagnostic sensor
     entities.append(ArubaSwitchDiagnosticSensor(host, username, password, ssh_port, port_count, config_entry.entry_id))
 
-    _LOGGER.debug(f"Created {len(entities)} activity sensors for all {len(ports)} ports (exclusion lists ignored for sensors)")
+    _LOGGER.debug(f"Created {len(entities)} sensors for all {len(ports)} ports: activity, bytes, packets, link status, and speed sensors")
     # Add entities without immediate update to avoid overwhelming the switch during setup
     async_add_entities(entities, update_before_add=False)
 
@@ -153,6 +161,13 @@ class ArubaPortActivitySensor(SensorEntity):
             )
             _LOGGER.debug(f"Port {self._port} statistics: {stats}")
             
+            if stats and any(stats.get(key, 0) > 0 for key in ["bytes_in", "bytes_out", "packets_in", "packets_out"]):
+                _LOGGER.debug(f"Port {self._port} has non-zero statistics: bytes_in={stats.get('bytes_in')}, bytes_out={stats.get('bytes_out')}")
+            elif stats:
+                _LOGGER.debug(f"Port {self._port} has all-zero statistics")
+            else:
+                _LOGGER.warning(f"Port {self._port} failed to get statistics")
+                
             if stats:
                 self._available = True
                 
@@ -171,11 +186,20 @@ class ArubaPortActivitySensor(SensorEntity):
                     
                     # Update state based on activity
                     total_rate = bytes_in_rate + bytes_out_rate
+                    
+                    # Debug logging for activity calculation
+                    _LOGGER.debug(f"Port {self._port} activity calc: prev_in={self._prev_bytes_in}, current_in={current_bytes_in}, "
+                                f"prev_out={self._prev_bytes_out}, current_out={current_bytes_out}, time_diff={time_diff:.2f}s")
+                    _LOGGER.debug(f"Port {self._port} rates: in_rate={bytes_in_rate:.2f} B/s, out_rate={bytes_out_rate:.2f} B/s, "
+                                f"total_rate={total_rate:.2f} B/s, threshold={self._activity_threshold} B/s")
+                    
                     if total_rate > self._activity_threshold:
                         self._state = "active"
                         self._attr_extra_state_attributes["last_activity"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                        _LOGGER.debug(f"Port {self._port} marked as ACTIVE (rate {total_rate:.2f} > {self._activity_threshold})")
                     else:
                         self._state = "idle"
+                        _LOGGER.debug(f"Port {self._port} marked as IDLE (rate {total_rate:.2f} <= {self._activity_threshold})")
                     
                     # Store rates
                     self._attr_extra_state_attributes["bytes_in_rate"] = round(bytes_in_rate, 2)
@@ -393,4 +417,241 @@ class ArubaSwitchDiagnosticSensor(SensorEntity):
             raise
         except Exception as e:
             _LOGGER.warning(f"Failed to update {self._attr_name}: {e}")
+            self._available = False
+
+class ArubaPortBytesSensor(SensorEntity):
+    """Sensor for port bytes in/out."""
+    
+    def __init__(self, host, username, password, ssh_port, port, entry_id, direction):
+        self._host = host
+        self._port = port
+        self._direction = direction  # "in" or "out"
+        self._entry_id = entry_id
+        
+        self._attr_name = f"Port {port} Bytes {direction.title()}"
+        self._attr_unique_id = f"{host}_{port}_bytes_{direction}"
+        self._attr_icon = "mdi:counter"
+        self._attr_unit_of_measurement = "B"
+        self._attr_state_class = "total_increasing"
+        self._attr_device_class = "data_size"
+        
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._state = 0
+        self._available = True
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": f"Switch {self._host}",
+            "manufacturer": "HP/Aruba",
+            "model": "Network Switch"
+        }
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def available(self):
+        return self._available
+
+    async def async_update(self):
+        try:
+            stats = await asyncio.wait_for(
+                self._ssh_manager.get_port_statistics(self._port),
+                timeout=10
+            )
+            
+            if stats:
+                key = f"bytes_{self._direction}"
+                self._state = stats.get(key, 0)
+                self._available = True
+            else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.debug(f"Failed to update bytes sensor for port {self._port}: {e}")
+            self._available = False
+
+
+class ArubaPortPacketsSensor(SensorEntity):
+    """Sensor for port packets in/out."""
+    
+    def __init__(self, host, username, password, ssh_port, port, entry_id, direction):
+        self._host = host
+        self._port = port
+        self._direction = direction  # "in" or "out"
+        self._entry_id = entry_id
+        
+        self._attr_name = f"Port {port} Packets {direction.title()}"
+        self._attr_unique_id = f"{host}_{port}_packets_{direction}"
+        self._attr_icon = "mdi:package-variant"
+        self._attr_unit_of_measurement = "packets"
+        self._attr_state_class = "total_increasing"
+        
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._state = 0
+        self._available = True
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": f"Switch {self._host}",
+            "manufacturer": "HP/Aruba",
+            "model": "Network Switch"
+        }
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def available(self):
+        return self._available
+
+    async def async_update(self):
+        try:
+            stats = await asyncio.wait_for(
+                self._ssh_manager.get_port_statistics(self._port),
+                timeout=10
+            )
+            
+            if stats:
+                key = f"packets_{self._direction}"
+                self._state = stats.get(key, 0)
+                self._available = True
+            else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.debug(f"Failed to update packets sensor for port {self._port}: {e}")
+            self._available = False
+
+
+class ArubaPortLinkStatusSensor(SensorEntity):
+    """Sensor for port link status."""
+    
+    def __init__(self, host, username, password, ssh_port, port, entry_id):
+        self._host = host
+        self._port = port
+        self._entry_id = entry_id
+        
+        self._attr_name = f"Port {port} Link Status"
+        self._attr_unique_id = f"{host}_{port}_link_status"
+        self._attr_icon = "mdi:ethernet"
+        
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._state = "unknown"
+        self._available = True
+        self._attr_extra_state_attributes = {}
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": f"Switch {self._host}",
+            "manufacturer": "HP/Aruba",
+            "model": "Network Switch"
+        }
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def available(self):
+        return self._available
+
+    async def async_update(self):
+        try:
+            link_info = await asyncio.wait_for(
+                self._ssh_manager.get_port_link_status(self._port),
+                timeout=10
+            )
+            
+            if link_info:
+                self._state = "up" if link_info.get("link_up", False) else "down"
+                self._attr_extra_state_attributes = {
+                    "port_enabled": link_info.get("port_enabled", False),
+                    "link_speed": link_info.get("link_speed", "unknown"),
+                    "duplex": link_info.get("duplex", "unknown"),
+                    "auto_negotiation": link_info.get("auto_negotiation", "unknown")
+                }
+                self._available = True
+            else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.debug(f"Failed to update link status sensor for port {self._port}: {e}")
+            self._available = False
+
+
+class ArubaPortSpeedSensor(SensorEntity):
+    """Sensor for port speed."""
+    
+    def __init__(self, host, username, password, ssh_port, port, entry_id):
+        self._host = host
+        self._port = port
+        self._entry_id = entry_id
+        
+        self._attr_name = f"Port {port} Speed"
+        self._attr_unique_id = f"{host}_{port}_speed"
+        self._attr_icon = "mdi:speedometer"
+        self._attr_unit_of_measurement = "Mbps"
+        
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._state = 0
+        self._available = True
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": f"Switch {self._host}",
+            "manufacturer": "HP/Aruba",
+            "model": "Network Switch"
+        }
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def available(self):
+        return self._available
+
+    async def async_update(self):
+        try:
+            link_info = await asyncio.wait_for(
+                self._ssh_manager.get_port_link_status(self._port),
+                timeout=10
+            )
+            
+            if link_info:
+                speed_str = link_info.get("link_speed", "unknown")
+                if "gbps" in speed_str.lower():
+                    # Convert Gbps to Mbps
+                    import re
+                    match = re.search(r'(\d+)', speed_str)
+                    if match:
+                        self._state = int(match.group(1)) * 1000
+                    else:
+                        self._state = 0
+                elif "mbps" in speed_str.lower():
+                    import re
+                    match = re.search(r'(\d+)', speed_str)
+                    if match:
+                        self._state = int(match.group(1))
+                    else:
+                        self._state = 0
+                else:
+                    self._state = 0
+                self._available = True
+            else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.debug(f"Failed to update speed sensor for port {self._port}: {e}")
             self._available = False
