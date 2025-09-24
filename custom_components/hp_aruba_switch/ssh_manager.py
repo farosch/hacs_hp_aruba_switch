@@ -349,6 +349,88 @@ class ArubaSSHManager:
             else:
                 return self._interface_cache.get(port, {"port_enabled": False, "link_status": "down"})
 
+    async def get_port_statistics(self, port: str) -> dict:
+        """Get traffic statistics for a specific port."""
+        try:
+            command = f"show interface {port} counters"
+            result = await self.execute_command(command, timeout=10)
+            
+            if not result:
+                return {}
+        except Exception as e:
+            _LOGGER.debug(f"Failed to get statistics for port {port}: {e}")
+            return {}
+        
+        stats = {
+            "bytes_in": 0,
+            "bytes_out": 0,
+            "packets_in": 0,
+            "packets_out": 0
+        }
+        
+        try:
+            for line in result.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                
+                line_lower = line.lower()
+                _LOGGER.debug(f"Parsing statistics line for port {port}: {repr(line)}")
+                
+                # Look for various counter formats
+                if "bytes received" in line_lower or "input bytes" in line_lower or "rx bytes" in line_lower:
+                    # Extract numeric value
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        stats["bytes_in"] = numbers[0]
+                        _LOGGER.debug(f"Found bytes_in for port {port}: {numbers[0]}")
+                
+                elif "bytes transmitted" in line_lower or "output bytes" in line_lower or "tx bytes" in line_lower:
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        stats["bytes_out"] = numbers[0]
+                        _LOGGER.debug(f"Found bytes_out for port {port}: {numbers[0]}")
+                
+                elif "packets received" in line_lower or "input packets" in line_lower or "rx packets" in line_lower:
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        stats["packets_in"] = numbers[0]
+                        _LOGGER.debug(f"Found packets_in for port {port}: {numbers[0]}")
+                
+                elif "packets transmitted" in line_lower or "output packets" in line_lower or "tx packets" in line_lower:
+                    numbers = [int(s) for s in line.split() if s.isdigit()]
+                    if numbers:
+                        stats["packets_out"] = numbers[0]
+                        _LOGGER.debug(f"Found packets_out for port {port}: {numbers[0]}")
+                
+                # Alternative format: look for colon-separated values
+                elif ":" in line:
+                    parts = line.split(":", 1)
+                    if len(parts) == 2:
+                        key = parts[0].strip().lower()
+                        value_str = parts[1].strip()
+                        
+                        # Extract first number from value
+                        numbers = [int(s) for s in value_str.split() if s.isdigit()]
+                        if numbers:
+                            value = numbers[0]
+                            
+                            if "bytes" in key and ("in" in key or "received" in key or "rx" in key):
+                                stats["bytes_in"] = value
+                            elif "bytes" in key and ("out" in key or "transmitted" in key or "tx" in key):
+                                stats["bytes_out"] = value
+                            elif "packets" in key and ("in" in key or "received" in key or "rx" in key):
+                                stats["packets_in"] = value
+                            elif "packets" in key and ("out" in key or "transmitted" in key or "tx" in key):
+                                stats["packets_out"] = value
+            
+            _LOGGER.debug(f"Final statistics for port {port}: {stats}")
+            return stats
+            
+        except Exception as e:
+            _LOGGER.warning(f"Failed to parse statistics for port {port}: {e}")
+            return {}
+
 # Global connection managers
 _connection_managers: Dict[str, ArubaSSHManager] = {}
 

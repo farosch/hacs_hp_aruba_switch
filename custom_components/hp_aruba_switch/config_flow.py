@@ -74,6 +74,11 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await validate_input(self.hass, user_input)
+                # Log initialization information for the user
+                _LOGGER.info(f"HP/Aruba Switch integration configured for {user_input[CONF_HOST]}. "
+                           "Switch controls will be available within 1 minute. Port activity sensors "
+                           "will initialize over the next 2-3 minutes with staggered updates to "
+                           "avoid overwhelming the switch.")
                 return self.async_create_entry(title=info["title"], data=user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"

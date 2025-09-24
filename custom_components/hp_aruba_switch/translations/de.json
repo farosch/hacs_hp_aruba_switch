@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "HP/Aruba Switch Konfiguration",
-        "description": "Geben Sie die Verbindungsdetails für Ihren HP/Aruba Switch ein. Diese Integration bietet Kontrolle über Switch-Ports und PoE-Verwaltung über SSH.",
+        "description": "Geben Sie die Verbindungsdetails für Ihren HP/Aruba Switch ein. Diese Integration bietet Kontrolle über Switch-Ports, PoE-Verwaltung und Port-Aktivitätsüberwachung über SSH.\n\n⚠️ Hinweis: Die Integration kann 2-3 Minuten benötigen, um alle Entitäten nach dem Hinzufügen vollständig zu initialisieren. Switch-Steuerungen werden zuerst verfügbar, gefolgt von Port-Aktivitätssensoren.",
         "data": {
           "host": "Host (IP-Adresse oder Hostname)",
           "username": "Benutzername",
@@ -31,6 +31,11 @@
       },
       "poe": {
         "name": "PoE {port}"
+      }
+    },
+    "sensor": {
+      "activity": {
+        "name": "Port {port} Aktivität"
       }
     }
   }

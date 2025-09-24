@@ -16,15 +16,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Store the config entry data
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
-    # Forward the setup to switch platform
+    # Set up switch platform first
     await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
+    
+    # Add a small delay before setting up sensors to allow switch initialization
+    import asyncio
+    await asyncio.sleep(2)
+    
+    # Then set up sensor platform
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
     
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    # Unload switch platform
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["switch"])
+    # Unload switch and sensor platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["switch", "sensor"])
     
     if unload_ok:
         # Remove the config entry from hass.data
