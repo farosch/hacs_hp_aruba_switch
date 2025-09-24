@@ -295,14 +295,14 @@ class ArubaSSHManager:
                 _LOGGER.debug(f"Parsing interface line for port {current_interface}: {repr(line)}")
                 
                 # Check for port enabled/disabled status - handle multiple formats
-                if "port enabled" in line_lower:
+                if "port enabled" in line_lower or line_lower.strip().startswith("port enabled"):
                     # Look for enabled/disabled or yes/no indicators
                     if ":" in line:
                         value_part = line.split(":", 1)[1].strip().lower()
-                        is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active"])
+                        is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
                         interfaces[current_interface]["port_enabled"] = is_enabled
                         link_details[current_interface]["port_enabled"] = is_enabled
-                        _LOGGER.debug(f"Found port enabled status for {current_interface}: {is_enabled} (from '{value_part}')")
+                        _LOGGER.debug(f"Found port enabled status for {current_interface}: {is_enabled} (from '{value_part}') - line was: '{line.strip()}'")
                 
                 # Check for link status
                 elif "link status" in line_lower:
@@ -365,32 +365,59 @@ class ArubaSSHManager:
                                     continue
                             return numbers
                         
-                        # Parse specific statistics formats
-                        if "bytes rx" in key and "bytes tx" in key.replace("bytes rx", ""):
-                            # Handle format: "Bytes Rx        : 58,481,022           Bytes Tx        : 59,025,203"
+                        # Debug what we're trying to parse
+                        _LOGGER.debug(f"Parsing line for {current_interface}: key='{key}', value='{value_str}'")
+                        
+                        # Parse specific statistics formats - Fixed to match actual HP/Aruba output
+                        if "bytes rx" in key:
+                            # Handle format: "Bytes Rx        : 133,773,022          Bytes Tx        : 82,704,381"
+                            # The value_str contains both Rx and Tx values
                             numbers = extract_numbers(value_str)
+                            _LOGGER.debug(f"Bytes RX line - extracted numbers: {numbers}")
                             if len(numbers) >= 2:
                                 statistics[current_interface]["bytes_in"] = numbers[0]
                                 statistics[current_interface]["bytes_out"] = numbers[1]
                                 _LOGGER.debug(f"Found bytes for {current_interface}: in={numbers[0]}, out={numbers[1]}")
-                        elif "unicast rx" in key and "unicast tx" in key.replace("unicast rx", ""):
-                            # Handle format: "Unicast Rx      : 103,390              Unicast Tx      : 95,843"
+                            elif len(numbers) == 1:
+                                # Single RX value
+                                statistics[current_interface]["bytes_in"] = numbers[0]
+                                _LOGGER.debug(f"Found bytes_in for {current_interface}: {numbers[0]}")
+                        elif "unicast rx" in key:
+                            # Handle format: "Unicast Rx      : 178,026              Unicast Tx      : 132,661"
                             numbers = extract_numbers(value_str)
+                            _LOGGER.debug(f"Unicast RX line - extracted numbers: {numbers}")
                             if len(numbers) >= 2:
                                 statistics[current_interface]["packets_in"] = numbers[0]
                                 statistics[current_interface]["packets_out"] = numbers[1]
                                 _LOGGER.debug(f"Found unicast packets for {current_interface}: in={numbers[0]}, out={numbers[1]}")
-                        elif "bcast/mcast rx" in key and "bcast/mcast tx" in key.replace("bcast/mcast rx", ""):
+                            elif len(numbers) == 1:
+                                # Single RX value
+                                statistics[current_interface]["packets_in"] = numbers[0]
+                                _LOGGER.debug(f"Found unicast packets_in for {current_interface}: {numbers[0]}")
+                        elif "bcast/mcast rx" in key:
                             # Handle broadcast/multicast - add to existing packet counts
                             numbers = extract_numbers(value_str)
+                            _LOGGER.debug(f"Bcast/Mcast RX line - extracted numbers: {numbers}")
                             if len(numbers) >= 2:
                                 current_in = statistics[current_interface].get("packets_in", 0)
                                 current_out = statistics[current_interface].get("packets_out", 0)
                                 statistics[current_interface]["packets_in"] = current_in + numbers[0]
                                 statistics[current_interface]["packets_out"] = current_out + numbers[1]
                                 _LOGGER.debug(f"Added broadcast/multicast packets for {current_interface}: in={numbers[0]}, out={numbers[1]}")
+                        elif "bytes" in key and "tx" in key:
+                            # Handle separate TX line if it exists
+                            numbers = extract_numbers(value_str)
+                            if numbers:
+                                statistics[current_interface]["bytes_out"] = numbers[0]
+                                _LOGGER.debug(f"Found bytes_out for {current_interface}: {numbers[0]}")
+                        elif "unicast" in key and "tx" in key:
+                            # Handle separate TX line if it exists
+                            numbers = extract_numbers(value_str)
+                            if numbers:
+                                statistics[current_interface]["packets_out"] = numbers[0]
+                                _LOGGER.debug(f"Found unicast packets_out for {current_interface}: {numbers[0]}")
                         elif "bytes" in key and len(extract_numbers(value_str)) == 1:
-                            # Single value statistics
+                            # Single value statistics (fallback)
                             numbers = extract_numbers(value_str)
                             if numbers:
                                 value = numbers[0]
