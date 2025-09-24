@@ -449,32 +449,17 @@ class ArubaSSHManager:
 
     async def get_interface_brief_info(self) -> dict:
         """Get interface brief information for speed/duplex data."""
-        # Try different brief commands (consolidated from both methods)
-        brief_commands = [
-            "show interface brief",
-            "show interfaces brief", 
-            "show int brief",
-            "show interface status",
-            "show port brief",
-            "show ports brief",
-            "show vlan ports all brief"
-        ]
+        # Use the standard interface brief command
+        cmd = "show interface brief"
         
-        result = None
-        successful_cmd = None
+        _LOGGER.debug(f"Executing brief command: {cmd}")
+        result = await self.execute_command(cmd, timeout=10)
         
-        for cmd in brief_commands:
-            _LOGGER.debug(f"Trying brief command: {cmd}")
-            result = await self.execute_command(cmd, timeout=10)
-            if result and "port" in result.lower() and len(result.strip()) > 100:
-                successful_cmd = cmd
-                break
-        
-        if not result:
-            _LOGGER.warning(f"All interface brief commands failed for {self.host}")
+        if not result or "port" not in result.lower() or len(result.strip()) <= 100:
+            _LOGGER.warning(f"Interface brief command failed for {self.host}")
             return {}
         
-        _LOGGER.info(f"Successfully used brief command '{successful_cmd}' for {self.host}")
+        _LOGGER.info(f"Successfully executed '{cmd}' for {self.host}")
         _LOGGER.debug(f"Raw brief output (first 800 chars): {repr(result[:800])}")
         
         brief_info = {}
