@@ -37,6 +37,11 @@
       "activity": {
         "name": "Port {port} Activity"
       }
+    },
+    "binary_sensor": {
+      "link": {
+        "name": "Port {port} Link"
+      }
     }
   }
 }

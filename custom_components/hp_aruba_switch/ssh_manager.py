@@ -431,6 +431,98 @@ class ArubaSSHManager:
             _LOGGER.warning(f"Failed to parse statistics for port {port}: {e}")
             return {}
 
+    async def get_port_link_status(self, port: str) -> dict:
+        """Get detailed link status information for a specific port."""
+        try:
+            # Use "show interfaces port-x detail" for more comprehensive information
+            command = f"show interface {port}"
+            result = await self.execute_command(command, timeout=10)
+            
+            if not result:
+                return {}
+        except Exception as e:
+            _LOGGER.debug(f"Failed to get link status for port {port}: {e}")
+            return {}
+        
+        status = {
+            "link_up": False,
+            "port_enabled": False,
+            "link_speed": "unknown",
+            "duplex": "unknown", 
+            "auto_negotiation": "unknown",
+            "cable_type": "unknown"
+        }
+        
+        try:
+            for line in result.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                
+                line_lower = line.lower()
+                _LOGGER.debug(f"Parsing link status line for port {port}: {repr(line)}")
+                
+                # Look for link status indicators
+                if "link status" in line_lower or "status" in line_lower:
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        status["link_up"] = "up" in value_part
+                        _LOGGER.debug(f"Found link status for port {port}: {'up' if status['link_up'] else 'down'}")
+                
+                # Look for port enabled/disabled status
+                elif ("port enabled" in line_lower or "enabled" in line_lower or 
+                      "admin" in line_lower) and "status" in line_lower:
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active"])
+                        status["port_enabled"] = is_enabled
+                        _LOGGER.debug(f"Found admin status for port {port}: {'enabled' if is_enabled else 'disabled'}")
+                
+                # Look for speed information
+                elif "speed" in line_lower and (":" in line or "mbps" in line_lower or "gbps" in line_lower):
+                    # Extract speed value
+                    import re
+                    speed_match = re.search(r'(\d+)\s*(mbps|gbps|mb|gb)', line_lower)
+                    if speed_match:
+                        speed_val = speed_match.group(1)
+                        speed_unit = speed_match.group(2)
+                        if "gb" in speed_unit:
+                            status["link_speed"] = f"{speed_val} Gbps"
+                        else:
+                            status["link_speed"] = f"{speed_val} Mbps"
+                        _LOGGER.debug(f"Found speed for port {port}: {status['link_speed']}")
+                
+                # Look for duplex information  
+                elif "duplex" in line_lower:
+                    if "full" in line_lower:
+                        status["duplex"] = "full"
+                    elif "half" in line_lower:
+                        status["duplex"] = "half"
+                    _LOGGER.debug(f"Found duplex for port {port}: {status['duplex']}")
+                
+                # Look for auto-negotiation
+                elif ("auto" in line_lower and "neg" in line_lower) or "autoneg" in line_lower:
+                    if ":" in line:
+                        value_part = line.split(":", 1)[1].strip().lower()
+                        auto_enabled = any(pos in value_part for pos in ["yes", "enabled", "on", "active"])
+                        status["auto_negotiation"] = "enabled" if auto_enabled else "disabled"
+                        _LOGGER.debug(f"Found auto-neg for port {port}: {status['auto_negotiation']}")
+                
+                # Look for cable type information
+                elif ("cable" in line_lower or "media" in line_lower or "type" in line_lower) and ":" in line:
+                    value_part = line.split(":", 1)[1].strip()
+                    if any(cable_type in value_part.lower() for cable_type in 
+                          ["copper", "fiber", "sfp", "1000base-t", "1000base-sx", "10gbase"]):
+                        status["cable_type"] = value_part
+                        _LOGGER.debug(f"Found cable type for port {port}: {status['cable_type']}")
+            
+            _LOGGER.debug(f"Final link status for port {port}: {status}")
+            return status
+            
+        except Exception as e:
+            _LOGGER.warning(f"Failed to parse link status for port {port}: {e}")
+            return {}
+
 # Global connection managers
 _connection_managers: Dict[str, ArubaSSHManager] = {}
 
