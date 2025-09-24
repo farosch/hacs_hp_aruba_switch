@@ -214,9 +214,32 @@ class ArubaSSHManager:
 
     async def get_all_interface_status(self) -> tuple[dict, dict, dict]:
         """Get status, statistics, and link details for all interfaces in a single query."""
-        result = await self.execute_command("show interface all", timeout=15)
+        # Try multiple commands to get interface information
+        commands_to_try = [
+            "show interface all",
+            "show interfaces all",
+            "show interface brief",
+            "show interfaces brief",
+            "show port all",
+            "show ports all"
+        ]
+        
+        result = None
+        successful_command = None
+        
+        for cmd in commands_to_try:
+            _LOGGER.debug(f"Trying command: {cmd}")
+            result = await self.execute_command(cmd, timeout=15)
+            if result and len(result.strip()) > 50:  # Got substantial output
+                successful_command = cmd
+                break
+        
         if not result:
+            _LOGGER.warning(f"No result from any interface command for {self.host}")
             return {}, {}, {}
+        
+        _LOGGER.info(f"Successfully used command '{successful_command}' for {self.host}")
+        _LOGGER.debug(f"Raw '{successful_command}' output for {self.host} (first 1000 chars): {repr(result[:1000])}")
         
         interfaces = {}
         statistics = {}
@@ -228,18 +251,44 @@ class ArubaSSHManager:
             if not line:
                 continue
                 
-            # Look for interface headers like "Status and Counters - Port Counters for port X"
-            if "port counters for port" in line.lower():
+            # Look for interface headers - try multiple patterns
+            if ("port counters for port" in line.lower() or 
+                "interface" in line.lower() and any(x in line.lower() for x in ["port", "ethernet", "gi", "fa", "te"]) or
+                line.lower().startswith("port") or
+                ("status and counters" in line.lower() and "port" in line.lower())):
+                
+                _LOGGER.debug(f"Potential interface header found: {repr(line)}")
                 try:
-                    port_num = line.split("port")[-1].strip()
-                    current_interface = port_num
-                    interfaces[current_interface] = {"port_enabled": False, "link_status": "down"}
-                    statistics[current_interface] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
-                    link_details[current_interface] = {
-                        "link_up": False, "port_enabled": False, "link_speed": "unknown",
-                        "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
-                    }
-                except:
+                    # Try multiple extraction methods
+                    port_num = None
+                    if "port counters for port" in line.lower():
+                        port_num = line.split("port")[-1].strip()
+                    elif "interface" in line.lower():
+                        # Try extracting from interface names like "Interface 1" or "GigabitEthernet1"
+                        import re
+                        match = re.search(r'(?:interface|port|gi|fa|te)[\s]*(\d+)', line.lower())
+                        if match:
+                            port_num = match.group(1)
+                    elif line.lower().startswith("port"):
+                        # Extract from "Port 1" etc
+                        import re
+                        match = re.search(r'port[\s]*(\d+)', line.lower())
+                        if match:
+                            port_num = match.group(1)
+                    
+                    if port_num:
+                        current_interface = port_num
+                        interfaces[current_interface] = {"port_enabled": False, "link_status": "down"}
+                        statistics[current_interface] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+                        link_details[current_interface] = {
+                            "link_up": False, "port_enabled": False, "link_speed": "unknown",
+                            "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
+                        }
+                        _LOGGER.debug(f"Successfully parsed interface header for port: {current_interface}")
+                    else:
+                        _LOGGER.debug(f"Could not extract port number from: {repr(line)}")
+                except Exception as e:
+                    _LOGGER.debug(f"Failed to parse interface header '{line}': {e}")
                     continue
             elif current_interface:
                 line_lower = line.lower()
@@ -353,7 +402,146 @@ class ArubaSSHManager:
                                     _LOGGER.debug(f"Found bytes_out for {current_interface}: {value} (from '{key}: {value_str}')")
         
         _LOGGER.debug(f"Parsed {len(interfaces)} interfaces, {len(statistics)} statistics, and {len(link_details)} link details from bulk query")
+        
+        if not interfaces:
+            _LOGGER.warning(f"No interfaces found in '{successful_command}' output for {self.host}! Trying alternative approach.")
+            _LOGGER.debug(f"Full output was: {repr(result)}")
+            
+            # Try alternative method - get statistics separately
+            return await self._get_interface_status_alternative()
+        
+        # Log sample of what was found
+        if statistics:
+            sample_port = list(statistics.keys())[0]
+            sample_stats = statistics[sample_port]
+            _LOGGER.debug(f"Sample statistics for port {sample_port}: {sample_stats}")
+        else:
+            _LOGGER.warning(f"No statistics found in output for {self.host}!")
+        
         return interfaces, statistics, link_details
+
+    async def _get_interface_status_alternative(self) -> tuple[dict, dict, dict]:
+        """Alternative method to get interface status when main command fails."""
+        _LOGGER.info(f"Using alternative interface status method for {self.host}")
+        
+        interfaces = {}
+        statistics = {}
+        link_details = {}
+        
+        # Try to get basic port list first
+        port_list_commands = [
+            "show interface brief",
+            "show interfaces brief", 
+            "show port brief",
+            "show ports brief",
+            "show vlan ports all brief"
+        ]
+        
+        port_result = None
+        for cmd in port_list_commands:
+            port_result = await self.execute_command(cmd, timeout=10)
+            if port_result and "port" in port_result.lower():
+                _LOGGER.debug(f"Got port list using '{cmd}': {repr(port_result[:500])}")
+                break
+        
+        # Extract port numbers from the output
+        port_numbers = []
+        if port_result:
+            import re
+            # Look for port numbers in various formats
+            for match in re.finditer(r'(?:^|\s)(\d+)(?:\s|$|/)', port_result, re.MULTILINE):
+                port_num = match.group(1)
+                if port_num.isdigit() and 1 <= int(port_num) <= 48:  # Reasonable port range
+                    port_numbers.append(port_num)
+        
+        # If we couldn't extract ports, create a default range
+        if not port_numbers:
+            _LOGGER.warning(f"Could not extract port numbers for {self.host}, using default range 1-24")
+            port_numbers = [str(i) for i in range(1, 25)]
+        else:
+            # Remove duplicates and sort
+            port_numbers = sorted(list(set(port_numbers)), key=int)
+            _LOGGER.info(f"Found {len(port_numbers)} ports for {self.host}: {port_numbers[:10]}{'...' if len(port_numbers) > 10 else ''}")
+        
+        # Initialize empty data for each port
+        for port_num in port_numbers:
+            interfaces[port_num] = {"port_enabled": False, "link_status": "down"}
+            statistics[port_num] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+            link_details[port_num] = {
+                "link_up": False, "port_enabled": False, "link_speed": "unknown",
+                "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
+            }
+        
+        # Try to get statistics with different commands
+        stats_commands = [
+            "show interface statistics",
+            "show interfaces statistics", 
+            "show port statistics",
+            "show ports statistics",
+            "show interface counters",
+            "show interfaces counters"
+        ]
+        
+        for cmd in stats_commands:
+            _LOGGER.debug(f"Trying statistics command: {cmd}")
+            stats_result = await self.execute_command(cmd, timeout=15)
+            if stats_result and len(stats_result.strip()) > 100:
+                _LOGGER.debug(f"Got statistics using '{cmd}' (first 800 chars): {repr(stats_result[:800])}")
+                
+                # Try to parse statistics from this output
+                parsed_stats = self._parse_statistics_output(stats_result, port_numbers)
+                if parsed_stats:
+                    statistics.update(parsed_stats)
+                    _LOGGER.info(f"Successfully parsed statistics for {len(parsed_stats)} ports using '{cmd}'")
+                    break
+        
+        return interfaces, statistics, link_details
+    
+    def _parse_statistics_output(self, output: str, port_numbers: list) -> dict:
+        """Parse statistics from various command outputs."""
+        stats = {}
+        current_port = None
+        
+        for line in output.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for port indicators
+            for port_num in port_numbers:
+                if (f"port {port_num}" in line.lower() or 
+                    f"interface {port_num}" in line.lower() or
+                    f"gi{port_num}" in line.lower() or
+                    line.strip() == port_num):
+                    current_port = port_num
+                    if current_port not in stats:
+                        stats[current_port] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+                    break
+            
+            if current_port and ":" in line:
+                line_lower = line.lower()
+                # Parse various statistics formats
+                if any(x in line_lower for x in ["bytes", "octets"]):
+                    import re
+                    numbers = re.findall(r'(\d{1,3}(?:,\d{3})*)', line)
+                    if numbers:
+                        value = int(numbers[0].replace(',', ''))
+                        if "rx" in line_lower or "in" in line_lower or "received" in line_lower:
+                            stats[current_port]["bytes_in"] = value
+                        elif "tx" in line_lower or "out" in line_lower or "transmitted" in line_lower:
+                            stats[current_port]["bytes_out"] = value
+                
+                elif any(x in line_lower for x in ["packets", "frames"]):
+                    import re  
+                    numbers = re.findall(r'(\d{1,3}(?:,\d{3})*)', line)
+                    if numbers:
+                        value = int(numbers[0].replace(',', ''))
+                        if "rx" in line_lower or "in" in line_lower or "received" in line_lower:
+                            stats[current_port]["packets_in"] = value
+                        elif "tx" in line_lower or "out" in line_lower or "transmitted" in line_lower:
+                            stats[current_port]["packets_out"] = value
+        
+        return stats
 
     async def get_all_poe_status(self) -> dict:
         """Get PoE status for all ports in a single query."""
@@ -567,19 +755,24 @@ class ArubaSSHManager:
         await self.update_bulk_cache()
         
         async with self._cache_lock:
-            return self._statistics_cache.get(port, {
+            cached_stats = self._statistics_cache.get(port, {
                 "bytes_in": 0,
                 "bytes_out": 0,
                 "packets_in": 0,
                 "packets_out": 0
             })
+            
+            _LOGGER.debug(f"Retrieved cached statistics for port {port}: {cached_stats}")
+            _LOGGER.debug(f"Statistics cache contains {len(self._statistics_cache)} ports: {list(self._statistics_cache.keys())}")
+            
+            return cached_stats
 
     async def get_port_link_status(self, port: str) -> dict:
         """Get cached detailed link status information for a specific port."""
         await self.update_bulk_cache()
         
         async with self._cache_lock:
-            return self._link_cache.get(port, {
+            cached_link = self._link_cache.get(port, {
                 "link_up": False,
                 "port_enabled": False,
                 "link_speed": "unknown",
@@ -587,6 +780,11 @@ class ArubaSSHManager:
                 "auto_negotiation": "unknown",
                 "cable_type": "unknown"
             })
+            
+            _LOGGER.debug(f"Retrieved cached link status for port {port}: {cached_link}")
+            _LOGGER.debug(f"Link cache contains {len(self._link_cache)} ports: {list(self._link_cache.keys())}")
+            
+            return cached_link
 
 # Global connection managers
 _connection_managers: Dict[str, ArubaSSHManager] = {}

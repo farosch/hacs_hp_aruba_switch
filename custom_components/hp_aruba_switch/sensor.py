@@ -44,9 +44,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         entities.append(ArubaPortLinkStatusSensor(host, username, password, ssh_port, port, config_entry.entry_id))
         entities.append(ArubaPortSpeedSensor(host, username, password, ssh_port, port, config_entry.entry_id))
 
-    # Add a comprehensive switch diagnostic sensor
-    entities.append(ArubaSwitchDiagnosticSensor(host, username, password, ssh_port, port_count, config_entry.entry_id))
-
     _LOGGER.debug(f"Created {len(entities)} sensors for all {len(ports)} ports: activity, bytes, packets, link status, and speed sensors")
     # Add entities without immediate update to avoid overwhelming the switch during setup
     async_add_entities(entities, update_before_add=False)
@@ -240,185 +237,6 @@ class ArubaPortActivitySensor(SensorEntity):
             _LOGGER.warning(f"Failed to update {self._attr_name}: {e}")
             self._available = False
 
-
-class ArubaSwitchDiagnosticSensor(SensorEntity):
-    """Comprehensive diagnostic sensor showing all switch port information."""
-    
-    def __init__(self, host, username, password, ssh_port, port_count, entry_id):
-        """Initialize the diagnostic sensor."""
-        self._host = host
-        self._username = username
-        self._password = password
-        self._ssh_port = ssh_port
-        self._port_count = port_count
-        self._entry_id = entry_id
-        self._state = "OK"
-        self._available = True
-        self._attr_name = f"Switch Diagnostics"
-        self._attr_unique_id = f"{host}_diagnostics"
-        self._attr_icon = "mdi:network-outline"
-        
-        # Comprehensive switch information
-        self._attr_extra_state_attributes = {
-            "total_ports": port_count,
-            "ports_up": 0,
-            "ports_enabled": 0,
-            "total_bytes_in": 0,
-            "total_bytes_out": 0,
-            "total_packets_in": 0,
-            "total_packets_out": 0,
-            "last_update": "never",
-            "port_details": {}
-        }
-        
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
-        self._last_update = 0
-        self._update_interval = 60  # Update every minute (less frequent for diagnostic)
-        
-        # Offset to prevent conflicts with other sensors
-        self._update_offset = 30  # 30 second offset
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        return self._attr_name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for this entity."""
-        return self._attr_unique_id
-
-    @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
-
-    @property
-    def available(self):
-        """Return if entity is available."""
-        return self._available
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._host)},
-            "name": f"Switch {self._host}",
-            "manufacturer": "Aruba",
-            "model": "Switch",
-        }
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        return self._attr_extra_state_attributes
-
-    async def async_update(self):
-        """Update the diagnostic sensor with comprehensive switch information."""
-        import time
-        current_time = time.time()
-        
-        # Skip update if entity is being removed
-        if not self.enabled:
-            return
-        
-        # Calculate time since last update with offset
-        time_since_update = current_time - (self._last_update + self._update_offset)
-        
-        # Only update if enough time has passed
-        if time_since_update < self._update_interval:
-            return
-        
-        self._last_update = current_time
-        
-        try:
-            # Force a cache update to get fresh data
-            await self._ssh_manager.update_bulk_cache()
-            
-            # Collect comprehensive port information
-            ports_up = 0
-            ports_enabled = 0
-            total_bytes_in = 0
-            total_bytes_out = 0
-            total_packets_in = 0
-            total_packets_out = 0
-            port_details = {}
-            
-            for port_num in range(1, self._port_count + 1):
-                port = str(port_num)
-                
-                # Get all data for each port
-                status = await self._ssh_manager.get_port_status(port, False)
-                statistics = await self._ssh_manager.get_port_statistics(port)
-                link_details = await self._ssh_manager.get_port_link_status(port)
-                
-                # Count statistics
-                if link_details.get("link_up", False):
-                    ports_up += 1
-                if status.get("port_enabled", False):
-                    ports_enabled += 1
-                
-                # Sum traffic statistics
-                bytes_in = statistics.get("bytes_in", 0)
-                bytes_out = statistics.get("bytes_out", 0)
-                packets_in = statistics.get("packets_in", 0)
-                packets_out = statistics.get("packets_out", 0)
-                
-                total_bytes_in += bytes_in
-                total_bytes_out += bytes_out
-                total_packets_in += packets_in
-                total_packets_out += packets_out
-                
-                # Store detailed port information
-                port_details[f"port_{port}"] = {
-                    "enabled": status.get("port_enabled", False),
-                    "link_up": link_details.get("link_up", False),
-                    "speed": link_details.get("link_speed", "unknown"),
-                    "duplex": link_details.get("duplex", "unknown"),
-                    "auto_neg": link_details.get("auto_negotiation", "unknown"),
-                    "cable_type": link_details.get("cable_type", "unknown"),
-                    "bytes_in": bytes_in,
-                    "bytes_out": bytes_out,
-                    "packets_in": packets_in,
-                    "packets_out": packets_out
-                }
-            
-            # Determine overall switch health
-            if ports_up == 0:
-                self._state = "NO_LINKS"
-            elif ports_up < ports_enabled / 2:
-                self._state = "DEGRADED"
-            else:
-                self._state = "OK"
-            
-            # Update attributes
-            import datetime
-            self._attr_extra_state_attributes.update({
-                "total_ports": self._port_count,
-                "ports_up": ports_up,
-                "ports_enabled": ports_enabled,
-                "total_bytes_in": total_bytes_in,
-                "total_bytes_out": total_bytes_out,
-                "total_packets_in": total_packets_in,
-                "total_packets_out": total_packets_out,
-                "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "port_details": port_details
-            })
-            
-            self._available = True
-            _LOGGER.debug(f"Switch diagnostics updated: {ports_up}/{self._port_count} ports up, "
-                        f"{ports_enabled} enabled, state: {self._state}")
-                
-        except asyncio.TimeoutError:
-            _LOGGER.debug(f"Timeout updating diagnostics for {self._attr_name}")
-            self._available = False
-        except asyncio.CancelledError:
-            _LOGGER.debug(f"Update cancelled for {self._attr_name}")
-            raise
-        except Exception as e:
-            _LOGGER.warning(f"Failed to update {self._attr_name}: {e}")
-            self._available = False
-
 class ArubaPortBytesSensor(SensorEntity):
     """Sensor for port bytes in/out."""
     
@@ -465,10 +283,13 @@ class ArubaPortBytesSensor(SensorEntity):
             
             if stats:
                 key = f"bytes_{self._direction}"
-                self._state = stats.get(key, 0)
+                value = stats.get(key, 0)
+                self._state = value
                 self._available = True
+                _LOGGER.debug(f"Port {self._port} bytes {self._direction}: {value} (from stats: {stats})")
             else:
                 self._available = False
+                _LOGGER.debug(f"No statistics returned for port {self._port} bytes sensor")
                 
         except Exception as e:
             _LOGGER.debug(f"Failed to update bytes sensor for port {self._port}: {e}")
@@ -520,10 +341,13 @@ class ArubaPortPacketsSensor(SensorEntity):
             
             if stats:
                 key = f"packets_{self._direction}"
-                self._state = stats.get(key, 0)
+                value = stats.get(key, 0)
+                self._state = value
                 self._available = True
+                _LOGGER.debug(f"Port {self._port} packets {self._direction}: {value} (from stats: {stats})")
             else:
                 self._available = False
+                _LOGGER.debug(f"No statistics returned for port {self._port} packets sensor")
                 
         except Exception as e:
             _LOGGER.debug(f"Failed to update packets sensor for port {self._port}: {e}")
@@ -631,6 +455,8 @@ class ArubaPortSpeedSensor(SensorEntity):
             
             if link_info:
                 speed_str = link_info.get("link_speed", "unknown")
+                _LOGGER.debug(f"Port {self._port} speed sensor - raw speed string: '{speed_str}' (from link_info: {link_info})")
+                
                 if "gbps" in speed_str.lower():
                     # Convert Gbps to Mbps
                     import re
@@ -648,9 +474,12 @@ class ArubaPortSpeedSensor(SensorEntity):
                         self._state = 0
                 else:
                     self._state = 0
+                
+                _LOGGER.debug(f"Port {self._port} speed sensor final value: {self._state}")
                 self._available = True
             else:
                 self._available = False
+                _LOGGER.debug(f"No link info returned for port {self._port} speed sensor")
                 
         except Exception as e:
             _LOGGER.debug(f"Failed to update speed sensor for port {self._port}: {e}")
