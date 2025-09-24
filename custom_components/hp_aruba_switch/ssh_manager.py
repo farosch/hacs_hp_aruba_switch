@@ -683,25 +683,14 @@ class ArubaSSHManager:
 
     async def get_all_poe_status(self) -> dict:
         """Get PoE status for all ports in a single query."""
-        # Try different PoE commands based on switch model
-        commands = [
-            "show power-over-ethernet all",
-            "show power-over-ethernet",
-            "show poe status",
-            "show interface brief power-over-ethernet"
-        ]
+        # Use the standard PoE command
+        cmd = "show power-over-ethernet all"
         
-        result = None
-        for cmd in commands:
-            result = await self.execute_command(cmd, timeout=15)
-            if result and "invalid" not in result.lower() and "error" not in result.lower():
-                _LOGGER.debug(f"PoE command '{cmd}' succeeded")
-                break
-            else:
-                _LOGGER.debug(f"PoE command '{cmd}' failed or returned error")
+        _LOGGER.debug(f"Executing PoE command: {cmd}")
+        result = await self.execute_command(cmd, timeout=15)
         
-        if not result:
-            _LOGGER.warning("All PoE commands failed")
+        if not result or "invalid" in result.lower() or "error" in result.lower():
+            _LOGGER.warning(f"PoE command '{cmd}' failed or returned error")
             return {}
         
         # Log the raw PoE output for debugging
