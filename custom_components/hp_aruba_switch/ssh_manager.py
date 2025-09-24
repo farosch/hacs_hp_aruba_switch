@@ -447,6 +447,114 @@ class ArubaSSHManager:
         
         return interfaces, statistics, link_details
 
+    async def get_interface_brief_info(self) -> dict:
+        """Get interface brief information for speed/duplex data."""
+        # Try different brief commands
+        brief_commands = [
+            "show interface brief",
+            "show interfaces brief", 
+            "show int brief",
+            "show interface status"
+        ]
+        
+        result = None
+        successful_cmd = None
+        
+        for cmd in brief_commands:
+            _LOGGER.debug(f"Trying brief command: {cmd}")
+            result = await self.execute_command(cmd, timeout=10)
+            if result and "port" in result.lower() and len(result.strip()) > 100:
+                successful_cmd = cmd
+                break
+        
+        if not result:
+            _LOGGER.warning(f"All interface brief commands failed for {self.host}")
+            return {}
+        
+        _LOGGER.info(f"Successfully used brief command '{successful_cmd}' for {self.host}")
+        _LOGGER.debug(f"Raw brief output (first 800 chars): {repr(result[:800])}")
+        
+        brief_info = {}
+        
+        # Parse the tabular output
+        lines = result.split('\n')
+        in_port_section = False
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Look for the header line to start parsing
+            if "port" in line.lower() and ("type" in line.lower() or "status" in line.lower()):
+                in_port_section = True
+                continue
+            elif line.startswith("-") or line.startswith("="):
+                # Skip separator lines
+                continue
+            elif not in_port_section:
+                continue
+            
+            # Parse port data lines
+            # Expected format: Port Type | Alert Enabled Status Mode MDI Flow
+            # Example: "1     100/1000T  | No        Yes     Up     1000FDx    MDIX off"
+            
+            if "|" in line:
+                parts = line.split("|")
+                if len(parts) >= 2:
+                    left_part = parts[0].strip()
+                    right_part = parts[1].strip()
+                    
+                    # Extract port number from left part
+                    port_match = left_part.split()
+                    if port_match:
+                        try:
+                            port_num = port_match[0]
+                            
+                            # Parse right part: "No Yes Up 1000FDx MDIX off"
+                            right_fields = right_part.split()
+                            if len(right_fields) >= 4:
+                                # Fields: [Alert, Enabled, Status, Mode, MDI, Flow]
+                                alert = right_fields[0]
+                                enabled = right_fields[1]
+                                status = right_fields[2] 
+                                mode = right_fields[3]
+                                
+                                # Parse speed and duplex from mode (e.g., "1000FDx")
+                                speed_mbps = 0
+                                duplex = "unknown"
+                                
+                                if mode and mode != ".":
+                                    import re
+                                    # Match patterns like "1000FDx", "100HDx", "10FDx"
+                                    speed_match = re.match(r'(\d+)(FD|HD|F|H)?x?', mode)
+                                    if speed_match:
+                                        speed_mbps = int(speed_match.group(1))
+                                        duplex_code = speed_match.group(2)
+                                        if duplex_code:
+                                            if duplex_code.startswith('F'):
+                                                duplex = "full"
+                                            elif duplex_code.startswith('H'):
+                                                duplex = "half"
+                                
+                                brief_info[port_num] = {
+                                    "port_enabled": enabled.lower() == "yes",
+                                    "link_up": status.lower() == "up",
+                                    "link_speed_mbps": speed_mbps,
+                                    "duplex": duplex,
+                                    "mode": mode,
+                                    "mdi": right_fields[4] if len(right_fields) > 4 else "unknown"
+                                }
+                                
+                                _LOGGER.debug(f"Parsed brief info for port {port_num}: speed={speed_mbps}Mbps, duplex={duplex}, enabled={enabled}, status={status}")
+                        
+                        except (ValueError, IndexError) as e:
+                            _LOGGER.debug(f"Could not parse brief line: {repr(line)} - {e}")
+                            continue
+        
+        _LOGGER.debug(f"Parsed brief info for {len(brief_info)} ports")
+        return brief_info
+
     async def _get_interface_status_alternative(self) -> tuple[dict, dict, dict]:
         """Alternative method to get interface status when main command fails."""
         _LOGGER.info(f"Using alternative interface status method for {self.host}")
@@ -728,12 +836,13 @@ class ArubaSSHManager:
                 return True  # Cache is still fresh
             
             try:
-                # Get interface+statistics and PoE data concurrently
+                # Get interface+statistics, PoE data, and brief info concurrently
                 interface_task = asyncio.create_task(self.get_all_interface_status())
                 poe_task = asyncio.create_task(self.get_all_poe_status())
+                brief_task = asyncio.create_task(self.get_interface_brief_info())
                 
-                interface_result, self._poe_cache = await asyncio.gather(
-                    interface_task, poe_task, return_exceptions=True
+                interface_result, self._poe_cache, brief_info = await asyncio.gather(
+                    interface_task, poe_task, brief_task, return_exceptions=True
                 )
                 
                 # Handle interface result (now returns 3-tuple)
@@ -751,10 +860,42 @@ class ArubaSSHManager:
                     self._poe_cache = {}
                     return False
                 
+                # Handle brief info result and merge with link cache
+                if isinstance(brief_info, Exception):
+                    _LOGGER.warning(f"Failed to update brief info: {brief_info}")
+                    brief_info = {}
+                else:
+                    # Merge brief info into link_cache for comprehensive link details
+                    for port, info in brief_info.items():
+                        if port in self._link_cache:
+                            # Update existing link details with brief info
+                            self._link_cache[port].update({
+                                "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                                "duplex": info["duplex"],
+                                "link_up": info["link_up"],
+                                "port_enabled": info["port_enabled"],
+                                "mode": info.get("mode", "unknown"),
+                                "mdi": info.get("mdi", "unknown")
+                            })
+                        else:
+                            # Create new link details entry
+                            self._link_cache[port] = {
+                                "link_up": info["link_up"],
+                                "port_enabled": info["port_enabled"],
+                                "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                                "duplex": info["duplex"],
+                                "auto_negotiation": "unknown",  # Not available in brief
+                                "cable_type": "unknown",        # Not available in brief
+                                "mode": info.get("mode", "unknown"),
+                                "mdi": info.get("mdi", "unknown")
+                            }
+                    
+                    _LOGGER.debug(f"Merged brief info for {len(brief_info)} ports into link cache")
+                
                 self._last_bulk_update = current_time
                 _LOGGER.debug(f"Updated bulk cache with {len(self._interface_cache)} interfaces, "
                             f"{len(self._statistics_cache)} statistics, {len(self._link_cache)} link details, "
-                            f"and {len(self._poe_cache)} PoE ports")
+                            f"{len(brief_info)} brief entries, and {len(self._poe_cache)} PoE ports")
                 return True
                 
             except Exception as e:

@@ -457,8 +457,9 @@ class ArubaPortSpeedSensor(SensorEntity):
                 speed_str = link_info.get("link_speed", "unknown")
                 _LOGGER.debug(f"Port {self._port} speed sensor - raw speed string: '{speed_str}' (from link_info: {link_info})")
                 
+                # Enhanced parsing for HP/Aruba format
                 if "gbps" in speed_str.lower():
-                    # Convert Gbps to Mbps
+                    # Convert Gbps to Mbps: "1 Gbps" -> 1000 Mbps
                     import re
                     match = re.search(r'(\d+)', speed_str)
                     if match:
@@ -466,16 +467,31 @@ class ArubaPortSpeedSensor(SensorEntity):
                     else:
                         self._state = 0
                 elif "mbps" in speed_str.lower():
+                    # Parse Mbps: "1000 Mbps" -> 1000
                     import re
                     match = re.search(r'(\d+)', speed_str)
                     if match:
                         self._state = int(match.group(1))
                     else:
                         self._state = 0
+                elif speed_str.isdigit():
+                    # Direct numeric value assumed to be Mbps
+                    self._state = int(speed_str)
                 else:
-                    self._state = 0
+                    # Check for brief mode format in link_info
+                    mode = link_info.get("mode", "")
+                    if mode and mode != "." and mode != "unknown":
+                        # Parse mode like "1000FDx" -> 1000 Mbps
+                        import re
+                        speed_match = re.match(r'(\d+)', mode)
+                        if speed_match:
+                            self._state = int(speed_match.group(1))
+                        else:
+                            self._state = 0
+                    else:
+                        self._state = 0
                 
-                _LOGGER.debug(f"Port {self._port} speed sensor final value: {self._state}")
+                _LOGGER.debug(f"Port {self._port} speed sensor final value: {self._state} Mbps")
                 self._available = True
             else:
                 self._available = False
