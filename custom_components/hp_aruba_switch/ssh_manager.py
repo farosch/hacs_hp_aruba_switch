@@ -610,76 +610,11 @@ class ArubaSSHManager:
                     "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
                 }
         
-        # Try to get statistics with different commands
-        stats_commands = [
-            "show interface statistics",
-            "show interfaces statistics", 
-            "show port statistics",
-            "show ports statistics",
-            "show interface counters",
-            "show interfaces counters"
-        ]
-        
-        for cmd in stats_commands:
-            _LOGGER.debug(f"Trying statistics command: {cmd}")
-            stats_result = await self.execute_command(cmd, timeout=15)
-            if stats_result and len(stats_result.strip()) > 100:
-                _LOGGER.debug(f"Got statistics using '{cmd}' (first 800 chars): {repr(stats_result[:800])}")
-                
-                # Try to parse statistics from this output
-                parsed_stats = self._parse_statistics_output(stats_result, port_numbers)
-                if parsed_stats:
-                    statistics.update(parsed_stats)
-                    _LOGGER.info(f"Successfully parsed statistics for {len(parsed_stats)} ports using '{cmd}'")
-                    break
+        # Statistics are not available via separate commands on HP/Aruba switches
+        # They are obtained through the main interface status commands only
+        _LOGGER.debug(f"Alternative method initialized {len(port_numbers)} ports with zero statistics")
         
         return interfaces, statistics, link_details
-    
-    def _parse_statistics_output(self, output: str, port_numbers: list) -> dict:
-        """Parse statistics from various command outputs."""
-        stats = {}
-        current_port = None
-        
-        for line in output.split('\n'):
-            line = line.strip()
-            if not line:
-                continue
-                
-            # Look for port indicators
-            for port_num in port_numbers:
-                if (f"port {port_num}" in line.lower() or 
-                    f"interface {port_num}" in line.lower() or
-                    f"gi{port_num}" in line.lower() or
-                    line.strip() == port_num):
-                    current_port = port_num
-                    if current_port not in stats:
-                        stats[current_port] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
-                    break
-            
-            if current_port and ":" in line:
-                line_lower = line.lower()
-                # Parse various statistics formats
-                if any(x in line_lower for x in ["bytes", "octets"]):
-                    import re
-                    numbers = re.findall(r'(\d{1,3}(?:,\d{3})*)', line)
-                    if numbers:
-                        value = int(numbers[0].replace(',', ''))
-                        if "rx" in line_lower or "in" in line_lower or "received" in line_lower:
-                            stats[current_port]["bytes_in"] = value
-                        elif "tx" in line_lower or "out" in line_lower or "transmitted" in line_lower:
-                            stats[current_port]["bytes_out"] = value
-                
-                elif any(x in line_lower for x in ["packets", "frames"]):
-                    import re  
-                    numbers = re.findall(r'(\d{1,3}(?:,\d{3})*)', line)
-                    if numbers:
-                        value = int(numbers[0].replace(',', ''))
-                        if "rx" in line_lower or "in" in line_lower or "received" in line_lower:
-                            stats[current_port]["packets_in"] = value
-                        elif "tx" in line_lower or "out" in line_lower or "transmitted" in line_lower:
-                            stats[current_port]["packets_out"] = value
-        
-        return stats
 
     async def get_all_poe_status(self) -> dict:
         """Get PoE status for all ports in a single query."""
