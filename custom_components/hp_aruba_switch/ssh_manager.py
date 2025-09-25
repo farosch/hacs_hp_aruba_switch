@@ -458,6 +458,13 @@ class ArubaSSHManager:
                 # Parse port status, link details, and statistics using existing logic
                 # More robust port enabled parsing - handle various whitespace scenarios
                 import re
+                
+                # Add debug logging to help diagnose regex issues
+                if "port enabled" in line_lower:
+                    _LOGGER.debug(f"Port {current_interface}: DEBUG - Line contains 'port enabled': '{line}' -> line_lower: '{line_lower}'")
+                    match_result = re.search(r'port\s+enabled\s*:', line_lower)
+                    _LOGGER.debug(f"Port {current_interface}: DEBUG - Regex match result: {match_result}")
+                
                 if re.search(r'port\s+enabled\s*:', line_lower) and ":" in line:
                     value_part = line.split(":", 1)[1].strip().lower()
                     is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
