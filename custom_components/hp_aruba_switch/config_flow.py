@@ -68,6 +68,11 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Create the options flow."""
+        return ArubaSwitchOptionsFlowHandler(config_entry)
+
     async def async_step_user(self, user_input=None):
         errors = {}
         
@@ -100,6 +105,89 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_EXCLUDE_PORTS, default=""): str,
                 vol.Optional(CONF_EXCLUDE_POE, default=""): str,
                 vol.Optional(CONF_REFRESH_INTERVAL, default=30): vol.All(int, vol.Range(min=10, max=300)),
+            }),
+            errors=errors,
+        )
+
+
+class ArubaSwitchOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for Aruba Switch Integration."""
+
+    def __init__(self, config_entry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+        errors = {}
+        
+        if user_input is not None:
+            # If username or password changed, validate connection
+            if (user_input[CONF_USERNAME] != self.config_entry.data.get(CONF_USERNAME) or 
+                user_input[CONF_PASSWORD] != self.config_entry.data.get(CONF_PASSWORD)):
+                
+                # Create validation data with current host and new credentials
+                validation_data = {
+                    CONF_HOST: self.config_entry.data[CONF_HOST],
+                    CONF_USERNAME: user_input[CONF_USERNAME],
+                    CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    CONF_SSH_PORT: user_input[CONF_SSH_PORT],
+                }
+                
+                try:
+                    await validate_input(self.hass, validation_data)
+                except CannotConnect:
+                    errors["base"] = "cannot_connect"
+                except InvalidAuth:
+                    errors["base"] = "invalid_auth"
+                except Exception:  # pylint: disable=broad-except
+                    _LOGGER.exception("Unexpected exception during credential validation")
+                    errors["base"] = "unknown"
+                
+                if errors:
+                    # Show form again with errors
+                    return self._show_options_form(user_input, errors)
+            
+            # Update the config entry with new data
+            new_data = self.config_entry.data.copy()
+            new_data.update(user_input)
+            
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=new_data
+            )
+            
+            # Log the update
+            _LOGGER.info(f"HP/Aruba Switch configuration updated for {new_data[CONF_HOST]}. "
+                       "Changes will take effect on the next refresh cycle.")
+            
+            return self.async_create_entry(title="", data={})
+        
+        return self._show_options_form()
+
+    def _show_options_form(self, user_input=None, errors=None):
+        """Show the options form."""
+        if errors is None:
+            errors = {}
+        
+        # Get current values from config entry
+        current_data = self.config_entry.data
+        
+        # Use user input if available, otherwise use current config values
+        if user_input is not None:
+            default_values = user_input
+        else:
+            default_values = current_data
+        
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required(CONF_USERNAME, default=default_values.get(CONF_USERNAME, "")): str,
+                vol.Required(CONF_PASSWORD, default=default_values.get(CONF_PASSWORD, "")): str,
+                vol.Optional(CONF_SSH_PORT, default=default_values.get(CONF_SSH_PORT, 22)): int,
+                vol.Optional(CONF_PORT_COUNT, default=default_values.get(CONF_PORT_COUNT, 24)): int,
+                vol.Optional(CONF_EXCLUDE_PORTS, default=default_values.get(CONF_EXCLUDE_PORTS, "")): str,
+                vol.Optional(CONF_EXCLUDE_POE, default=default_values.get(CONF_EXCLUDE_POE, "")): str,
+                vol.Optional(CONF_REFRESH_INTERVAL, default=default_values.get(CONF_REFRESH_INTERVAL, 30)): vol.All(int, vol.Range(min=10, max=300)),
             }),
             errors=errors,
         )

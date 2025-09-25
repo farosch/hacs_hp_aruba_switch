@@ -25,6 +25,28 @@
       "already_configured": "Il dispositivo è già configurato"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configura opzioni Switch HP/Aruba",
+        "description": "Aggiorna la configurazione del tuo switch HP/Aruba. Le modifiche avranno effetto nel prossimo ciclo di aggiornamento.\n\n⚠️ Nota: L'host non può essere modificato qui. Per connettersi a uno switch diverso, elimina e riaggungi l'integrazione.",
+        "data": {
+          "username": "Nome utente",
+          "password": "Password",
+          "ssh_port": "Porta SSH (predefinita: 22)",
+          "port_count": "Numero di porte (1-48, predefinita: 24)",
+          "exclude_ports": "Escludi porte (separate da virgole, es: 1,24)",
+          "exclude_poe": "Escludere porte PoE (separate da virgole, es: 23,24)",
+          "refresh_interval": "Intervallo di aggiornamento in secondi (10-300, predefinito: 30)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossibile connettersi allo switch con le nuove credenziali. Controllare nome utente e password.",
+      "invalid_auth": "Autenticazione non valida con le nuove credenziali. Controllare nome utente e password.",
+      "unknown": "Errore imprevisto durante l'aggiornamento della configurazione. Controllare i log per maggiori dettagli."
+    }
+  },
   "entity": {
     "switch": {
       "port": {

@@ -26,7 +26,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Then set up sensor and binary_sensor platforms
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
     
+    # Add update listener for options flow
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    
     return True
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Reload config entry when options are updated."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""

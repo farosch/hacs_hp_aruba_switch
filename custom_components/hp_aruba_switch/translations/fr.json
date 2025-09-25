@@ -25,6 +25,28 @@
       "already_configured": "L'appareil est déjà configuré"
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configurer les options du commutateur HP/Aruba",
+        "description": "Mettez à jour la configuration de votre commutateur HP/Aruba. Les modifications prendront effet au prochain cycle de mise à jour.\n\n⚠️ Note : L'hôte ne peut pas être modifié ici. Pour vous connecter à un commutateur différent, supprimez et rajoutez l'intégration.",
+        "data": {
+          "username": "Nom d'utilisateur",
+          "password": "Mot de passe",
+          "ssh_port": "Port SSH (défaut : 22)",
+          "port_count": "Nombre de ports (1-48, défaut : 24)",
+          "exclude_ports": "Exclure les ports (séparés par des virgules, ex : 1,24)",
+          "exclude_poe": "Exclure les ports PoE (séparés par des virgules, ex : 23,24)",
+          "refresh_interval": "Intervalle de mise à jour en secondes (10-300, défaut : 30)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de connexion au commutateur avec les nouvelles informations d'identification. Veuillez vérifier le nom d'utilisateur et le mot de passe.",
+      "invalid_auth": "Authentification invalide avec les nouvelles informations d'identification. Veuillez vérifier votre nom d'utilisateur et mot de passe.",
+      "unknown": "Erreur inattendue lors de la mise à jour de la configuration. Veuillez consulter les logs pour plus de détails."
+    }
+  },
   "entity": {
     "switch": {
       "port": {
