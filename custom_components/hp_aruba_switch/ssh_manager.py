@@ -214,32 +214,18 @@ class ArubaSSHManager:
 
     async def get_all_interface_status(self) -> tuple[dict, dict, dict]:
         """Get status, statistics, and link details for all interfaces in a single query."""
-        # Try multiple commands to get interface information
-        commands_to_try = [
-            "show interface all",
-            "show interfaces all",
-            "show interface brief",
-            "show interfaces brief",
-            "show port all",
-            "show ports all"
-        ]
+        # Use the standard interface all command
+        cmd = "show interface all"
         
-        result = None
-        successful_command = None
+        _LOGGER.debug(f"Executing interface command: {cmd}")
+        result = await self.execute_command(cmd, timeout=15)
         
-        for cmd in commands_to_try:
-            _LOGGER.debug(f"Trying command: {cmd}")
-            result = await self.execute_command(cmd, timeout=15)
-            if result and len(result.strip()) > 50:  # Got substantial output
-                successful_command = cmd
-                break
-        
-        if not result:
-            _LOGGER.warning(f"No result from any interface command for {self.host}")
+        if not result or len(result.strip()) <= 50:
+            _LOGGER.warning(f"Interface command '{cmd}' failed for {self.host}")
             return {}, {}, {}
         
-        _LOGGER.info(f"Successfully used command '{successful_command}' for {self.host}")
-        _LOGGER.debug(f"Raw '{successful_command}' output for {self.host} (first 1000 chars): {repr(result[:1000])}")
+        _LOGGER.info(f"Successfully executed '{cmd}' for {self.host}")
+        _LOGGER.debug(f"Raw '{cmd}' output for {self.host} (first 1000 chars): {repr(result[:1000])}")
         
         interfaces = {}
         statistics = {}
@@ -431,7 +417,7 @@ class ArubaSSHManager:
         _LOGGER.debug(f"Parsed {len(interfaces)} interfaces, {len(statistics)} statistics, and {len(link_details)} link details from bulk query")
         
         if not interfaces:
-            _LOGGER.warning(f"No interfaces found in '{successful_command}' output for {self.host}! Trying alternative approach.")
+            _LOGGER.warning(f"No interfaces found in '{cmd}' output for {self.host}! Trying alternative approach.")
             _LOGGER.debug(f"Full output was: {repr(result)}")
             
             # Try alternative method - get statistics separately
