@@ -738,8 +738,405 @@ class ArubaSSHManager:
         _LOGGER.debug(f"Parsed {len(poe_ports)} PoE ports from bulk query")
         return poe_ports
 
+    async def get_all_switch_data(self) -> tuple[dict, dict, dict, dict]:
+        """Execute all commands in a single SSH session and parse the combined output."""
+        # Define all commands we need to execute
+        commands = [
+            "show interface all",
+            "show interface brief", 
+            "show power-over-ethernet all"
+        ]
+        
+        # Combine all commands into a single multi-line command
+        combined_command = "\n".join(commands)
+        
+        _LOGGER.debug(f"Executing combined commands in single session: {commands}")
+        result = await self.execute_command(combined_command, timeout=30)
+        
+        if not result:
+            _LOGGER.warning(f"Combined command execution failed for {self.host}")
+            return {}, {}, {}, {}
+        
+        _LOGGER.info(f"Successfully executed {len(commands)} commands in single session for {self.host}")
+        _LOGGER.debug(f"Combined output length: {len(result)} characters")
+        
+        # Parse the combined output
+        return self._parse_combined_output(result, commands)
+    
+    def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict]:
+        """Parse the combined output from all commands."""
+        interfaces = {}
+        statistics = {}
+        link_details = {}
+        poe_ports = {}
+        
+        # Split output by command boundaries - look for command echoes or patterns
+        sections = self._split_output_by_commands(output, commands)
+        
+        for i, (cmd, section_output) in enumerate(sections.items()):
+            _LOGGER.debug(f"Processing section for command '{cmd}' (length: {len(section_output)})")
+            
+            if "show interface all" in cmd:
+                # Parse interface status and statistics
+                ifaces, stats, links = self._parse_interface_all_output(section_output)
+                interfaces.update(ifaces)
+                statistics.update(stats)
+                link_details.update(links)
+                
+            elif "show interface brief" in cmd:
+                # Parse brief interface info
+                brief_info = self._parse_interface_brief_output(section_output)
+                # Merge brief info into link_details
+                for port, info in brief_info.items():
+                    if port in link_details:
+                        # Update existing link details with brief info
+                        link_details[port].update({
+                            "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                            "duplex": info["duplex"],
+                            "link_up": info["link_up"],
+                            "port_enabled": info["port_enabled"],
+                            "mode": info.get("mode", "unknown"),
+                            "mdi": info.get("mdi", "unknown")
+                        })
+                    else:
+                        # Create new link details entry
+                        link_details[port] = {
+                            "link_up": info["link_up"],
+                            "port_enabled": info["port_enabled"],
+                            "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                            "duplex": info["duplex"],
+                            "auto_negotiation": "unknown",
+                            "cable_type": "unknown",
+                            "mode": info.get("mode", "unknown"),
+                            "mdi": info.get("mdi", "unknown")
+                        }
+                        
+            elif "show power-over-ethernet all" in cmd:
+                # Parse PoE status
+                poe_ports.update(self._parse_poe_output(section_output))
+        
+        _LOGGER.debug(f"Parsed from combined output: {len(interfaces)} interfaces, {len(statistics)} statistics, "
+                     f"{len(link_details)} link details, {len(poe_ports)} PoE ports")
+        
+        return interfaces, statistics, link_details, poe_ports
+    
+    def _split_output_by_commands(self, output: str, commands: list) -> dict:
+        """Split the combined output into sections for each command."""
+        sections = {}
+        current_section = ""
+        current_command = None
+        
+        lines = output.split('\n')
+        
+        for line in lines:
+            line_stripped = line.strip()
+            
+            # Check if this line matches any of our commands (command echo)
+            matching_cmd = None
+            for cmd in commands:
+                if cmd.strip() in line_stripped:
+                    matching_cmd = cmd
+                    break
+            
+            if matching_cmd:
+                # Save previous section if we have one
+                if current_command and current_section:
+                    sections[current_command] = current_section.strip()
+                
+                # Start new section
+                current_command = matching_cmd
+                current_section = ""
+                _LOGGER.debug(f"Found command boundary for: {matching_cmd}")
+            else:
+                # Add line to current section
+                if current_command:
+                    current_section += line + "\n"
+        
+        # Save the last section
+        if current_command and current_section:
+            sections[current_command] = current_section.strip()
+        
+        # If splitting by command echo failed, try to split by output patterns
+        if not sections:
+            _LOGGER.debug("Command echo splitting failed, trying pattern-based splitting")
+            sections = self._split_by_output_patterns(output, commands)
+        
+        return sections
+    
+    def _split_by_output_patterns(self, output: str, commands: list) -> dict:
+        """Alternative splitting method based on output patterns."""
+        sections = {}
+        
+        # Simple approach: split the output into roughly equal parts
+        lines = output.split('\n')
+        total_lines = len(lines)
+        
+        if total_lines < 10:  # Too short to split meaningfully
+            sections[commands[0]] = output
+            return sections
+        
+        # Rough estimation: divide output by number of commands
+        lines_per_cmd = total_lines // len(commands)
+        
+        for i, cmd in enumerate(commands):
+            start_line = i * lines_per_cmd
+            if i == len(commands) - 1:  # Last command gets remaining lines
+                end_line = total_lines
+            else:
+                end_line = (i + 1) * lines_per_cmd
+            
+            section_lines = lines[start_line:end_line]
+            sections[cmd] = '\n'.join(section_lines)
+            _LOGGER.debug(f"Pattern-based split for '{cmd}': lines {start_line}-{end_line}")
+        
+        return sections
+    
+    def _parse_interface_all_output(self, output: str) -> tuple[dict, dict, dict]:
+        """Parse 'show interface all' output for interfaces, statistics, and link details."""
+        interfaces = {}
+        statistics = {}
+        link_details = {}
+        current_interface = None
+        
+        for line in output.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for interface headers - try multiple patterns
+            if ("port counters for port" in line.lower() or 
+                "interface" in line.lower() and any(x in line.lower() for x in ["port", "ethernet", "gi", "fa", "te"]) or
+                line.lower().startswith("port") or
+                ("status and counters" in line.lower() and "port" in line.lower())):
+                
+                try:
+                    # Try multiple extraction methods
+                    port_num = None
+                    if "port counters for port" in line.lower():
+                        port_num = line.split("port")[-1].strip()
+                    elif "interface" in line.lower():
+                        import re
+                        match = re.search(r'(?:interface|port|gi|fa|te)[\s]*(\d+)', line.lower())
+                        if match:
+                            port_num = match.group(1)
+                    elif line.lower().startswith("port"):
+                        import re
+                        match = re.search(r'port[\s]*(\d+)', line.lower())
+                        if match:
+                            port_num = match.group(1)
+                    
+                    if port_num:
+                        current_interface = port_num
+                        interfaces[current_interface] = {"port_enabled": False, "link_status": "down"}
+                        statistics[current_interface] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+                        link_details[current_interface] = {
+                            "link_up": False, "port_enabled": False, "link_speed": "unknown",
+                            "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
+                        }
+                except Exception as e:
+                    continue
+                    
+            elif current_interface:
+                line_lower = line.lower()
+                
+                # Parse port status, link details, and statistics using existing logic
+                if "port enabled" in line_lower and ":" in line:
+                    value_part = line.split(":", 1)[1].strip().lower()
+                    is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
+                    interfaces[current_interface]["port_enabled"] = is_enabled
+                    link_details[current_interface]["port_enabled"] = is_enabled
+                
+                elif "link status" in line_lower and ":" in line:
+                    value_part = line.split(":", 1)[1].strip().lower()
+                    link_up = "up" in value_part
+                    interfaces[current_interface]["link_status"] = "up" if link_up else "down"
+                    link_details[current_interface]["link_up"] = link_up
+                
+                elif ":" in line:
+                    parts = line.split(":", 1)
+                    if len(parts) == 2:
+                        key = parts[0].strip().lower()
+                        value_str = parts[1].strip()
+                        
+                        # Extract statistics using existing logic
+                        def extract_numbers(text):
+                            import re
+                            numbers = []
+                            for match in re.finditer(r'(\d{1,3}(?:,\d{3})*)', text):
+                                number_str = match.group(1).replace(',', '')
+                                try:
+                                    numbers.append(int(number_str))
+                                except ValueError:
+                                    continue
+                            return numbers
+                        
+                        if "bytes rx" in key:
+                            numbers = extract_numbers(value_str)
+                            if len(numbers) >= 2:
+                                statistics[current_interface]["bytes_in"] = numbers[0]
+                                statistics[current_interface]["bytes_out"] = numbers[1]
+                            elif len(numbers) == 1:
+                                statistics[current_interface]["bytes_in"] = numbers[0]
+                        elif "unicast rx" in key:
+                            numbers = extract_numbers(value_str)
+                            if len(numbers) >= 2:
+                                statistics[current_interface]["packets_in"] = numbers[0]
+                                statistics[current_interface]["packets_out"] = numbers[1]
+                            elif len(numbers) == 1:
+                                statistics[current_interface]["packets_in"] = numbers[0]
+        
+        return interfaces, statistics, link_details
+    
+    def _parse_interface_brief_output(self, output: str) -> dict:
+        """Parse 'show interface brief' output for speed/duplex data."""
+        brief_info = {}
+        lines = output.split('\n')
+        in_port_section = False
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Look for the header line to start parsing
+            if "port" in line.lower() and ("type" in line.lower() or "status" in line.lower()):
+                in_port_section = True
+                continue
+            elif line.startswith("-") or line.startswith("="):
+                continue
+            elif not in_port_section:
+                continue
+            
+            # Parse port data lines
+            if "|" in line:
+                parts = line.split("|")
+                if len(parts) >= 2:
+                    left_part = parts[0].strip()
+                    right_part = parts[1].strip()
+                    
+                    port_match = left_part.split()
+                    if port_match:
+                        try:
+                            port_num = port_match[0]
+                            right_fields = right_part.split()
+                            if len(right_fields) >= 4:
+                                enabled = right_fields[1]
+                                status = right_fields[2] 
+                                mode = right_fields[3]
+                                
+                                speed_mbps = 0
+                                duplex = "unknown"
+                                
+                                if mode and mode != ".":
+                                    import re
+                                    speed_match = re.match(r'(\d+)(FD|HD|F|H)?x?', mode)
+                                    if speed_match:
+                                        speed_mbps = int(speed_match.group(1))
+                                        duplex_code = speed_match.group(2)
+                                        if duplex_code:
+                                            if duplex_code.startswith('F'):
+                                                duplex = "full"
+                                            elif duplex_code.startswith('H'):
+                                                duplex = "half"
+                                
+                                brief_info[port_num] = {
+                                    "port_enabled": enabled.lower() == "yes",
+                                    "link_up": status.lower() == "up",
+                                    "link_speed_mbps": speed_mbps,
+                                    "duplex": duplex,
+                                    "mode": mode,
+                                    "mdi": right_fields[4] if len(right_fields) > 4 else "unknown"
+                                }
+                        except (ValueError, IndexError):
+                            continue
+        
+        return brief_info
+    
+    def _parse_poe_output(self, output: str) -> dict:
+        """Parse 'show power-over-ethernet all' output for PoE status."""
+        poe_ports = {}
+        current_port = None
+        
+        for line in output.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for port headers
+            port_header_patterns = [
+                "information for port", "port status", "interface", "gi", r"^[0-9]+[/]*[0-9]*\s"
+            ]
+            
+            line_lower = line.lower()
+            port_found = False
+            
+            for pattern in port_header_patterns:
+                if pattern == r"^[0-9]+[/]*[0-9]*\s":
+                    import re
+                    if re.match(r'^\s*\d+(/\d+)?\s+', line):
+                        try:
+                            current_port = line.split()[0]
+                            poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
+                            port_found = True
+                            break
+                        except:
+                            continue
+                elif pattern in line_lower:
+                    try:
+                        if "port" in pattern:
+                            port_num = line.split("port")[-1].strip()
+                        elif "interface" in pattern:
+                            parts = line.split()
+                            port_num = parts[-1] if parts else ""
+                        else:
+                            port_num = line.split()[-1] if line.split() else ""
+                        
+                        if port_num and port_num.replace('/', '').replace('.', '').isdigit():
+                            current_port = port_num
+                            poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
+                            port_found = True
+                            break
+                    except:
+                        continue
+            
+            if port_found:
+                continue
+            elif current_port:
+                # Parse PoE data for current port using existing logic
+                def parse_combined_line(line_text):
+                    parsed_fields = {}
+                    import re
+                    matches = re.findall(r'([^:]+?)\s*:\s*([^:]*?)(?=\s{3,}[^:]+\s*:|$)', line_text)
+                    for key, value in matches:
+                        key = key.strip().lower()
+                        value = value.strip().lower()
+                        parsed_fields[key] = value
+                    return parsed_fields
+                
+                parsed_data = parse_combined_line(line)
+                
+                for key, value in parsed_data.items():
+                    if "power enable" in key:
+                        is_enabled = "yes" in value
+                        poe_ports[current_port]["power_enable"] = is_enabled
+                    elif "poe port status" in key or "poe status" in key:
+                        poe_status_str = "off"
+                        if "searching" in value:
+                            poe_status_str = "searching"
+                        elif "delivering" in value or "deliver" in value:
+                            poe_status_str = "delivering"
+                        elif "enabled" in value or "on" in value or "active" in value:
+                            poe_status_str = "on"
+                        elif "fault" in value or "error" in value or "overload" in value:
+                            poe_status_str = "fault"
+                        elif "denied" in value or "reject" in value:
+                            poe_status_str = "denied"
+                        poe_ports[current_port]["poe_status"] = poe_status_str
+        
+        return poe_ports
+
     async def update_bulk_cache(self) -> bool:
-        """Update the bulk cache with fresh data from the switch."""
+        """Update the bulk cache with fresh data from the switch using single session."""
         import time
         current_time = time.time()
         
@@ -749,66 +1146,19 @@ class ArubaSSHManager:
                 return True  # Cache is still fresh
             
             try:
-                # Get interface+statistics, PoE data, and brief info concurrently
-                interface_task = asyncio.create_task(self.get_all_interface_status())
-                poe_task = asyncio.create_task(self.get_all_poe_status())
-                brief_task = asyncio.create_task(self.get_interface_brief_info())
+                # Execute all commands in a single session
+                interfaces, statistics, link_details, poe_ports = await self.get_all_switch_data()
                 
-                interface_result, self._poe_cache, brief_info = await asyncio.gather(
-                    interface_task, poe_task, brief_task, return_exceptions=True
-                )
-                
-                # Handle interface result (now returns 3-tuple)
-                if isinstance(interface_result, Exception):
-                    _LOGGER.warning(f"Failed to update interface cache: {interface_result}")
-                    self._interface_cache = {}
-                    self._statistics_cache = {}
-                    self._link_cache = {}
-                    return False
-                else:
-                    self._interface_cache, self._statistics_cache, self._link_cache = interface_result
-                    
-                if isinstance(self._poe_cache, Exception):
-                    _LOGGER.warning(f"Failed to update PoE cache: {self._poe_cache}")
-                    self._poe_cache = {}
-                    return False
-                
-                # Handle brief info result and merge with link cache
-                if isinstance(brief_info, Exception):
-                    _LOGGER.warning(f"Failed to update brief info: {brief_info}")
-                    brief_info = {}
-                else:
-                    # Merge brief info into link_cache for comprehensive link details
-                    for port, info in brief_info.items():
-                        if port in self._link_cache:
-                            # Update existing link details with brief info
-                            self._link_cache[port].update({
-                                "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
-                                "duplex": info["duplex"],
-                                "link_up": info["link_up"],
-                                "port_enabled": info["port_enabled"],
-                                "mode": info.get("mode", "unknown"),
-                                "mdi": info.get("mdi", "unknown")
-                            })
-                        else:
-                            # Create new link details entry
-                            self._link_cache[port] = {
-                                "link_up": info["link_up"],
-                                "port_enabled": info["port_enabled"],
-                                "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
-                                "duplex": info["duplex"],
-                                "auto_negotiation": "unknown",  # Not available in brief
-                                "cable_type": "unknown",        # Not available in brief
-                                "mode": info.get("mode", "unknown"),
-                                "mdi": info.get("mdi", "unknown")
-                            }
-                    
-                    _LOGGER.debug(f"Merged brief info for {len(brief_info)} ports into link cache")
+                # Update all caches
+                self._interface_cache = interfaces
+                self._statistics_cache = statistics  
+                self._link_cache = link_details
+                self._poe_cache = poe_ports
                 
                 self._last_bulk_update = current_time
-                _LOGGER.debug(f"Updated bulk cache with {len(self._interface_cache)} interfaces, "
-                            f"{len(self._statistics_cache)} statistics, {len(self._link_cache)} link details, "
-                            f"{len(brief_info)} brief entries, and {len(self._poe_cache)} PoE ports")
+                _LOGGER.debug(f"Updated bulk cache via single session: {len(interfaces)} interfaces, "
+                            f"{len(statistics)} statistics, {len(link_details)} link details, "
+                            f"{len(poe_ports)} PoE ports")
                 return True
                 
             except Exception as e:
