@@ -44,6 +44,13 @@
 - Multi-language support for options flow
 - Improved error handling and user feedback
 
+#### **Expanded Language Support**
+- Added Dutch (Netherlands/Belgium) translation
+- Added Portuguese (Brazil/Portugal) translation
+- Added Polish (Poland) translation
+- Added Russian (Russia/CIS) translation
+- Total of 9 supported languages for global accessibility
+
 ### � **Technical Improvements**
 
 #### **Optimized SSH Operations** 
