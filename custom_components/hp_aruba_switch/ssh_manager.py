@@ -450,6 +450,7 @@ class ArubaSSHManager:
                             "link_up": False, "port_enabled": False, "link_speed": "unknown",
                             "duplex": "unknown", "auto_negotiation": "unknown", "cable_type": "unknown"
                         }
+                        _LOGGER.debug(f"Started parsing port {current_interface} from line: '{line}'")
                 except Exception as e:
                     continue
                     
@@ -457,17 +458,21 @@ class ArubaSSHManager:
                 line_lower = line.lower()
                 
                 # Parse port status, link details, and statistics using existing logic
-                if "port enabled" in line_lower and ":" in line:
+                # More robust port enabled parsing - handle various whitespace scenarios
+                import re
+                if re.search(r'port\s+enabled.*:', line_lower) and ":" in line:
                     value_part = line.split(":", 1)[1].strip().lower()
                     is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
                     interfaces[current_interface]["port_enabled"] = is_enabled
                     link_details[current_interface]["port_enabled"] = is_enabled
+                    _LOGGER.debug(f"Port {current_interface}: Found 'Port Enabled' line: '{line}' -> value_part: '{value_part}' -> is_enabled: {is_enabled}")
                 
-                elif "link status" in line_lower and ":" in line:
+                elif re.search(r'link\s+status.*:', line_lower) and ":" in line:
                     value_part = line.split(":", 1)[1].strip().lower()
                     link_up = "up" in value_part
                     interfaces[current_interface]["link_status"] = "up" if link_up else "down"
                     link_details[current_interface]["link_up"] = link_up
+                    _LOGGER.debug(f"Port {current_interface}: Found 'Link Status' line: '{line}' -> value_part: '{value_part}' -> link_up: {link_up}")
                 
                 elif ":" in line:
                     parts = line.split(":", 1)
