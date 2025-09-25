@@ -1,118 +1,81 @@
 # Release Notes
 
-## Version 1.0.7 - Major Performance Revolution & Comprehensive Monitoring
+## Version 1.0.7 - Comprehensive Monitoring & Enhanced Features
 **September 25, 2025**
 
-### 🚀 Revolutionary SSH Performance Improvements
+### ✨ **New Monitoring Features**
 
-This version delivers a **massive 80% reduction in SSH overhead** through revolutionary single-session architecture:
+#### **Port Activity Sensors**
+- Real-time port activity monitoring (active/idle status)
+- Traffic rate calculations with threshold-based activity detection
+- Detailed traffic statistics in sensor attributes
 
-#### ⚡ **Single SSH Session Architecture**
-- **Before**: 3+ individual SSH sessions per update cycle  
-- **After**: 1 combined SSH session executing all commands
-- **Result**: ~80% reduction in connection overhead and dramatically improved performance
+#### **Traffic Statistics Sensors** 
+- Individual bytes in/out sensors per port
+- Individual packets in/out sensors per port
+- Total increasing counters for long-term monitoring
 
-#### 🎯 **Smart Combined Command Execution**
-- All switch commands (`show interface all`, `show interface brief`, `show power-over-ethernet all`) now execute in one session
-- Intelligent output parsing with command boundary detection and fallback mechanisms  
-- Preserves all parsing accuracy while maximizing efficiency
+#### **Link Status Sensors**
+- Port link status with speed and duplex information
+- Auto-negotiation status and cable type detection
+- Enhanced speed detection supporting HP/Aruba formats
 
-### 📊 **Comprehensive Monitoring Suite**
+#### **Binary Link Sensors**
+- Simple on/off connectivity status per port
+- Rich attributes with detailed link information
+- Perfect for automations and notifications
 
-#### **New Sensor Types** (144 total sensors for 24-port switch!)
-- **Port Activity Sensors**: Real-time traffic monitoring with rate calculation
-- **Traffic Statistics**: Individual bytes in/out and packets in/out sensors per port
-- **Link Status Sensors**: Detailed port status with speed, duplex, auto-negotiation info
-- **Speed Sensors**: Accurate port speed detection (supports 10M/100M/1G with "1000FDx" format)
+### ⚙️ **Configuration Enhancements**
 
-#### **New Binary Sensors**
-- **Link Connectivity**: Per-port link up/down status with detailed attributes
-- **Real-time Updates**: Staggered polling prevents switch overload
+#### **Configurable Refresh Interval**
+- Set custom refresh rates from 10 seconds to 5 minutes
+- Default: 30 seconds for balanced updates
+- Configurable during initial setup or integration reconfiguration
 
-### 🎛️ **User-Configurable Performance**
+#### **Enhanced Setup Process**
+- Better field descriptions and validation
+- Clear initialization timing information
+- Improved error handling and user feedback
 
-#### **Refresh Interval Control**  
-- New setup option: Configure refresh rate (default: 30 seconds)
-- **Fast networks**: 15-20 seconds for dedicated management networks
-- **Standard networks**: 30 seconds (balanced performance)  
-- **Slower networks**: 45-60 seconds for busy or slower switches
+### � **Technical Improvements**
 
-### 🔧 **Enhanced HP/Aruba Compatibility**
+#### **Optimized SSH Operations** 
+- Single SSH session for all commands instead of multiple connections
+- Combined command execution with intelligent output parsing
+- Reduced connection overhead and improved reliability
 
-#### **Improved Command Parsing**
-- Enhanced support for HP/Aruba specific output formats
-- Better handling of comma-separated statistics (e.g., "133,773,022")
-- Robust parsing of interface brief format with speed/duplex detection
-- Support for combined statistics lines (RX/TX values on same line)
+#### **Enhanced HP/Aruba Compatibility**
+- Better parsing of comma-separated statistics
+- Improved interface brief format support  
+- Enhanced PoE status detection and parsing
+- Support for various HP/Aruba output formats
 
-#### **Advanced PoE Management**
-- Multi-format PoE header detection
-- Combined line parsing for complex PoE status formats
-- Power consumption-based status override logic
+#### **Rich Entity Attributes**
+- Switch entities expose comprehensive port data
+- Traffic statistics, link details, and timestamps
+- PoE entities include detailed power information
+- Perfect for advanced automations and dashboards
 
-### 💡 **Smart Caching & Performance**
-
-#### **Unified Cache Architecture**
-- Single refresh method replaces complex multi-session caching
-- All data types (interfaces, statistics, PoE, link details) updated atomically
-- Dramatic reduction in code complexity (~562 lines of code removed!)
+### 🌍 **User Experience**
 
 #### **Staggered Entity Updates**
-- Intelligent offset calculation prevents simultaneous entity updates
-- Switch entities: 5-second buffer above refresh interval
-- Activity sensors: 60-90 second initial delay with 30-second spread
-- Link sensors: 45-65 second initial delay with 20-second spread
-
-### 🛠️ **Code Architecture Improvements**
-
-#### **Simplified SSH Manager**
-- Removed old individual command methods (`get_all_interface_status`, `get_interface_brief_info`, etc.)
-- Single `refresh_all_data()` method handles all data retrieval
-- Factory pattern supports configurable refresh intervals
-- Cleaner error handling and debugging
-
-#### **Enhanced Entity Attributes**
-- Switch entities now expose comprehensive port data (traffic stats, link details, timestamps)
-- PoE entities include power status and consumption information
-- Rich attribute sets for advanced automations and monitoring
-
-### 🌍 **Improved User Experience**
-
-#### **Better Setup Process**
-- Clear initialization messaging (switch controls available in 1 minute, sensors in 2-3 minutes)
-- Comprehensive field descriptions including refresh interval guidance
-- Enhanced error handling and user feedback
+- Prevents overwhelming switches with simultaneous queries
+- Intelligent timing offsets for different entity types
+- Maintains data freshness while being switch-friendly
 
 #### **Expanded Language Support**
-- Updated translations include new refresh interval option
-- Consistent entity naming across all languages
+- Updated translations for new configuration options
+- Consistent entity naming across all supported languages
 
-### 📈 **Performance Metrics**
+### 🐛 **Bug Fixes**
 
-| Metric | Before v1.0.7 | After v1.0.7 | Improvement |
-|--------|----------------|---------------|-------------|
-| SSH Sessions per Update | 3+ individual | 1 combined | ~80% reduction |
-| Code Complexity | 1,309 lines | 747 lines | 562 lines removed |
-| Update Efficiency | Multiple queries | Single query | Dramatically improved |
-| Network Overhead | High (multiple connections) | Minimal (single session) | Massive reduction |
-
-### 🔄 **Migration & Compatibility**
-
-- **Existing integrations**: Will continue working with enhanced performance after HA restart
-- **New installations**: Get all new features immediately
-- **Backward compatibility**: All existing automations and configurations preserved
-- **Recommended action**: Re-add integration to access new refresh interval configuration
-
-### 🐛 **Bug Fixes & Improvements**
-
-- **Statistics Parsing**: Fixed sensors showing 0 values for bytes/packets
-- **Speed Detection**: Enhanced parsing for "1000FDx" and similar HP/Aruba formats  
-- **Error Handling**: More robust timeout and connection management
-- **Debug Logging**: Comprehensive debugging for easier troubleshooting
-- **Memory Efficiency**: Reduced memory usage through optimized caching
+- Fixed sensors showing 0 values for traffic statistics
+- Improved speed sensor parsing for HP/Aruba "1000FDx" format
+- Better error handling for SSH timeouts and connection issues
+- Enhanced debug logging for easier troubleshooting
 
 ---
-**Upgrade Impact**: Restart Home Assistant to activate new performance improvements. Optionally re-add integration for refresh interval configuration.
+**Note**: Restart Home Assistant to activate new features. Reconfigure integration to access refresh interval setting.
 
 ## Version 1.0.2 - HACS Compatibility
 **September 23, 2025**

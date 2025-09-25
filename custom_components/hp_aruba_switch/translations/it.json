@@ -11,7 +11,8 @@
           "ssh_port": "Porta SSH (predefinita: 22)",
           "port_count": "Numero di porte (1-48, predefinita: 24)",
           "exclude_ports": "Escludi porte (separate da virgole, es: 1,24)",
-          "exclude_poe": "Escludi porte PoE (separate da virgole, es: 23,24)"
+          "exclude_poe": "Escludere porte PoE (separate da virgole, es: 23,24)",
+          "refresh_interval": "Intervallo di aggiornamento in secondi (10-300, predefinito: 30)"
         }
       }
     },

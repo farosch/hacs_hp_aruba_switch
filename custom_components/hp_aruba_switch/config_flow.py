@@ -99,7 +99,7 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_PORT_COUNT, default=24): int,
                 vol.Optional(CONF_EXCLUDE_PORTS, default=""): str,
                 vol.Optional(CONF_EXCLUDE_POE, default=""): str,
-                vol.Optional(CONF_REFRESH_INTERVAL, default=30): int,
+                vol.Optional(CONF_REFRESH_INTERVAL, default=30): vol.All(int, vol.Range(min=10, max=300)),
             }),
             errors=errors,
         )
