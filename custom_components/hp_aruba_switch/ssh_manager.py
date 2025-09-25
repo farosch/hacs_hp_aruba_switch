@@ -303,23 +303,21 @@ class ArubaSSHManager:
             elif "show interface brief" in cmd:
                 # Parse brief interface info
                 brief_info = self._parse_interface_brief_output(section_output)
-                # Merge brief info into link_details
+                # Merge brief info into link_details (only speed/duplex info)
                 for port, info in brief_info.items():
                     if port in link_details:
-                        # Update existing link details with brief info
+                        # Update existing link details with brief info (speed/duplex only)
                         link_details[port].update({
                             "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
                             "duplex": info["duplex"],
-                            "link_up": info["link_up"],
-                            "port_enabled": info["port_enabled"],
                             "mode": info.get("mode", "unknown"),
                             "mdi": info.get("mdi", "unknown")
                         })
                     else:
-                        # Create new link details entry
+                        # Create new link details entry with speed/duplex from brief, defaults for others
                         link_details[port] = {
-                            "link_up": info["link_up"],
-                            "port_enabled": info["port_enabled"],
+                            "link_up": False,  # Default, will be set by detailed parsing if available
+                            "port_enabled": False,  # Default, will be set by detailed parsing if available
                             "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
                             "duplex": info["duplex"],
                             "auto_negotiation": "unknown",
@@ -541,12 +539,8 @@ class ArubaSSHManager:
                         try:
                             port_num = port_match[0]
                             right_fields = right_part.split()
-                            _LOGGER.debug(f"Brief parsing port {port_num}: right_part='{right_part}' -> right_fields={right_fields}")
                             if len(right_fields) >= 4:
-                                enabled = right_fields[1]
-                                status = right_fields[2] 
                                 mode = right_fields[3]
-                                _LOGGER.debug(f"Port {port_num} brief: enabled='{enabled}' -> port_enabled={enabled.lower() == 'yes'}, status='{status}' -> link_up={status.lower() == 'up'}")
                                 
                                 speed_mbps = 0
                                 duplex = "unknown"
@@ -564,8 +558,6 @@ class ArubaSSHManager:
                                                 duplex = "half"
                                 
                                 brief_info[port_num] = {
-                                    "port_enabled": enabled.lower() == "yes",
-                                    "link_up": status.lower() == "up",
                                     "link_speed_mbps": speed_mbps,
                                     "duplex": duplex,
                                     "mode": mode,
