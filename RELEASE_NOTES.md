@@ -1,29 +1,5 @@
 # Release Notes
 
-## Version 1.0.8 - Options Flow & Configuration Management
-**September 25, 2025**
-
-### ✨ **New Configuration Features**
-
-#### **Options Flow Support**
-- Added ability to modify configuration after initial setup
-- Access via Settings → Devices & Services → HP/Aruba Switch → Configure
-- No need to delete and re-add integration for configuration changes
-
-#### **Reconfigurable Settings**
-- Username and password (with connection validation)
-- SSH port
-- Port count and excluded ports
-- PoE port exclusions
-- Refresh interval (10-300 seconds)
-
-#### **Enhanced User Experience**
-- Real-time credential validation when changing username/password
-- Automatic entity reload when configuration changes
-- Multi-language support for options flow
-
----
-
 ## Version 1.0.7 - Comprehensive Monitoring & Enhanced Features
 **September 25, 2025**
 
@@ -51,14 +27,21 @@
 
 ### ⚙️ **Configuration Enhancements**
 
-#### **Configurable Refresh Interval**
-- Set custom refresh rates from 10 seconds to 5 minutes
-- Default: 30 seconds for balanced updates
-- Configurable during initial setup or integration reconfiguration
+#### **Options Flow Support**
+- Added ability to modify configuration after initial setup
+- Access via Settings → Devices & Services → HP/Aruba Switch → Configure
+- No need to delete and re-add integration for configuration changes
 
-#### **Enhanced Setup Process**
-- Better field descriptions and validation
-- Clear initialization timing information
+#### **Reconfigurable Settings**
+- Username and password (with connection validation)
+- SSH port and port count settings
+- Port exclusions and PoE port exclusions
+- Refresh interval (10-300 seconds with validation)
+
+#### **Enhanced User Experience**
+- Real-time credential validation when changing username/password
+- Automatic entity reload when configuration changes
+- Multi-language support for options flow
 - Improved error handling and user feedback
 
 ### � **Technical Improvements**
