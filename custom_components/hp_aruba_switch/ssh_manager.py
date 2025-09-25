@@ -458,14 +458,14 @@ class ArubaSSHManager:
                 # Parse port status, link details, and statistics using existing logic
                 # More robust port enabled parsing - handle various whitespace scenarios
                 import re
-                if re.search(r'port\s*enabled\s*:', line_lower) and ":" in line:
+                if re.search(r'port\s+enabled\s*:', line_lower) and ":" in line:
                     value_part = line.split(":", 1)[1].strip().lower()
                     is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
                     interfaces[current_interface]["port_enabled"] = is_enabled
                     link_details[current_interface]["port_enabled"] = is_enabled
                     _LOGGER.debug(f"Port {current_interface}: Found 'Port Enabled' line: '{line}' -> value_part: '{value_part}' -> is_enabled: {is_enabled}")
                 
-                elif re.search(r'link\s*status\s*:', line_lower) and ":" in line:
+                elif re.search(r'link\s+status\s*:', line_lower) and ":" in line:
                     value_part = line.split(":", 1)[1].strip().lower()
                     link_up = "up" in value_part
                     interfaces[current_interface]["link_status"] = "up" if link_up else "down"
