@@ -541,10 +541,12 @@ class ArubaSSHManager:
                         try:
                             port_num = port_match[0]
                             right_fields = right_part.split()
+                            _LOGGER.debug(f"Brief parsing port {port_num}: right_part='{right_part}' -> right_fields={right_fields}")
                             if len(right_fields) >= 4:
                                 enabled = right_fields[1]
                                 status = right_fields[2] 
                                 mode = right_fields[3]
+                                _LOGGER.debug(f"Port {port_num} brief: enabled='{enabled}' -> port_enabled={enabled.lower() == 'yes'}, status='{status}' -> link_up={status.lower() == 'up'}")
                                 
                                 speed_mbps = 0
                                 duplex = "unknown"
