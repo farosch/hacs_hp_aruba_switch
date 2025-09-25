@@ -3,7 +3,7 @@ import logging
 import asyncio
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
 from homeassistant.helpers.entity import Entity
-from .const import DOMAIN
+from .const import DOMAIN, CONF_REFRESH_INTERVAL
 from .ssh_manager import get_ssh_manager
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     
     # Get configured port count (default to 24 if not set)
     port_count = config_entry.data.get("port_count", 24)
+    refresh_interval = config_entry.data.get("refresh_interval", 30)
     
     # Note: Binary sensors are created for ALL ports regardless of exclusion lists
     # This allows monitoring link status even on ports that don't have control switches
@@ -28,13 +29,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entities = []
 
     # Test SSH connectivity during setup
-    ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+    ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
     test_result = await ssh_manager.execute_command("show version", timeout=10)
     _LOGGER.info(f"SSH connectivity test for binary sensors {host}: {'SUCCESS' if test_result else 'FAILED'}")
 
     for port in ports:
         # Add link status binary sensor for each port
-        entities.append(ArubaPortLinkSensor(host, username, password, ssh_port, port, config_entry.entry_id))
+        entities.append(ArubaPortLinkSensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
 
     _LOGGER.debug(f"Created {len(entities)} link status binary sensors for all {len(ports)} ports")
     # Add entities without immediate update to avoid overwhelming the switch during setup
@@ -44,7 +45,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class ArubaPortLinkSensor(BinarySensorEntity):
     """Representation of an Aruba switch port link status binary sensor."""
     
-    def __init__(self, host, username, password, ssh_port, port, entry_id):
+    def __init__(self, host, username, password, ssh_port, port, entry_id, refresh_interval=30):
         """Initialize the binary sensor."""
         self._host = host
         self._username = username
@@ -68,9 +69,9 @@ class ArubaPortLinkSensor(BinarySensorEntity):
             "cable_type": "unknown"
         }
         
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
         self._last_update = 0
-        self._update_interval = 30  # Update every 30 seconds
+        self._update_interval = refresh_interval
         
         # Stagger updates to prevent simultaneous queries, with longer initial delay
         import hashlib

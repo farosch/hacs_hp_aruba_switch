@@ -3,7 +3,7 @@ import asyncio
 import paramiko
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import Entity
-from .const import DOMAIN
+from .const import DOMAIN, CONF_REFRESH_INTERVAL
 from .ssh_manager import get_ssh_manager
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     
     # Get configured port count (default to 24 if not set)
     port_count = config_entry.data.get("port_count", 24)
+    refresh_interval = config_entry.data.get("refresh_interval", 30)
     _LOGGER.debug(f"Using configured port count: {port_count}")
     _LOGGER.debug(f"Config entry data: {config_entry.data}")
     
@@ -33,7 +34,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entities = []
 
     # Test SSH connectivity during setup
-    ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+    ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
     test_result = await ssh_manager.execute_command("show version", timeout=10)
     _LOGGER.info(f"SSH connectivity test for {host}: {'SUCCESS' if test_result else 'FAILED'}")
     if test_result:
@@ -42,11 +43,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for port in ports:
         # Add port switch entity (if not excluded)
         if port not in exclude_ports:
-            entities.append(ArubaSwitch(host, username, password, ssh_port, port, False, config_entry.entry_id))
+            entities.append(ArubaSwitch(host, username, password, ssh_port, port, False, config_entry.entry_id, refresh_interval))
         
         # Add PoE switch entity (if not excluded)
         if port not in exclude_poe:
-            entities.append(ArubaSwitch(host, username, password, ssh_port, port, True, config_entry.entry_id))
+            entities.append(ArubaSwitch(host, username, password, ssh_port, port, True, config_entry.entry_id, refresh_interval))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -57,7 +58,7 @@ class ArubaSwitch(SwitchEntity):
     # Reduce update frequency to avoid overwhelming the switch
     entity_registry_enabled_default = True
     
-    def __init__(self, host, username, password, ssh_port, port, is_poe, entry_id):
+    def __init__(self, host, username, password, ssh_port, port, is_poe, entry_id, refresh_interval=30):
         """Initialize the switch."""
         self._host = host
         self._username = username
@@ -92,9 +93,9 @@ class ArubaSwitch(SwitchEntity):
             "last_update": "never"
         }
             
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
         self._last_update = 0
-        self._update_interval = 35  # Reduced since bulk queries are more efficient
+        self._update_interval = refresh_interval + 5  # Add small buffer for switches
         
         # Stagger updates to prevent simultaneous cache refreshes
         # Use port number and type to create different offsets

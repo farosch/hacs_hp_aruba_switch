@@ -4,7 +4,7 @@ import asyncio
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.const import UnitOfInformation
 from homeassistant.helpers.entity import Entity
-from .const import DOMAIN
+from .const import DOMAIN, CONF_REFRESH_INTERVAL
 from .ssh_manager import get_ssh_manager
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     ssh_port = config_entry.data.get("ssh_port", 22)
     # Get configured port count (default to 24 if not set)
     port_count = config_entry.data.get("port_count", 24)
+    refresh_interval = config_entry.data.get("refresh_interval", 30)
     
     # Note: Activity sensors are created for ALL ports regardless of exclusion lists
     # This allows monitoring traffic even on ports that don't have control switches
@@ -28,21 +29,21 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entities = []
 
     # Test SSH connectivity during setup
-    ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+    ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
     test_result = await ssh_manager.execute_command("show version", timeout=10)
     _LOGGER.info(f"SSH connectivity test for sensors {host}: {'SUCCESS' if test_result else 'FAILED'}")
 
     for port in ports:
         # Add port activity sensor for ALL ports (exclusion lists don't apply to sensors)
-        entities.append(ArubaPortActivitySensor(host, username, password, ssh_port, port, config_entry.entry_id))
+        entities.append(ArubaPortActivitySensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
         
         # Add individual statistic sensors for each port
-        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in"))
-        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out"))
-        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in"))
-        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out"))
-        entities.append(ArubaPortLinkStatusSensor(host, username, password, ssh_port, port, config_entry.entry_id))
-        entities.append(ArubaPortSpeedSensor(host, username, password, ssh_port, port, config_entry.entry_id))
+        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in", refresh_interval))
+        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out", refresh_interval))
+        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in", refresh_interval))
+        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out", refresh_interval))
+        entities.append(ArubaPortLinkStatusSensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
+        entities.append(ArubaPortSpeedSensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
 
     _LOGGER.debug(f"Created {len(entities)} sensors for all {len(ports)} ports: activity, bytes, packets, link status, and speed sensors")
     # Add entities without immediate update to avoid overwhelming the switch during setup
@@ -52,7 +53,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class ArubaPortActivitySensor(SensorEntity):
     """Representation of an Aruba switch port activity sensor."""
     
-    def __init__(self, host, username, password, ssh_port, port, entry_id):
+    def __init__(self, host, username, password, ssh_port, port, entry_id, refresh_interval=30):
         """Initialize the sensor."""
         self._host = host
         self._username = username
@@ -77,9 +78,9 @@ class ArubaPortActivitySensor(SensorEntity):
             "last_activity": "Never"
         }
         
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
         self._last_update = 0
-        self._update_interval = 30  # Update every 30 seconds
+        self._update_interval = refresh_interval
         
         # Previous values for calculating rates
         self._prev_bytes_in = 0
@@ -240,7 +241,7 @@ class ArubaPortActivitySensor(SensorEntity):
 class ArubaPortBytesSensor(SensorEntity):
     """Sensor for port bytes in/out."""
     
-    def __init__(self, host, username, password, ssh_port, port, entry_id, direction):
+    def __init__(self, host, username, password, ssh_port, port, entry_id, direction, refresh_interval=30):
         self._host = host
         self._port = port
         self._direction = direction  # "in" or "out"
@@ -253,7 +254,7 @@ class ArubaPortBytesSensor(SensorEntity):
         self._attr_state_class = "total_increasing"
         self._attr_device_class = "data_size"
         
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
         self._state = 0
         self._available = True
 
@@ -299,7 +300,7 @@ class ArubaPortBytesSensor(SensorEntity):
 class ArubaPortPacketsSensor(SensorEntity):
     """Sensor for port packets in/out."""
     
-    def __init__(self, host, username, password, ssh_port, port, entry_id, direction):
+    def __init__(self, host, username, password, ssh_port, port, entry_id, direction, refresh_interval=30):
         self._host = host
         self._port = port
         self._direction = direction  # "in" or "out"
@@ -311,7 +312,7 @@ class ArubaPortPacketsSensor(SensorEntity):
         self._attr_unit_of_measurement = "packets"
         self._attr_state_class = "total_increasing"
         
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
         self._state = 0
         self._available = True
 
@@ -357,7 +358,7 @@ class ArubaPortPacketsSensor(SensorEntity):
 class ArubaPortLinkStatusSensor(SensorEntity):
     """Sensor for port link status."""
     
-    def __init__(self, host, username, password, ssh_port, port, entry_id):
+    def __init__(self, host, username, password, ssh_port, port, entry_id, refresh_interval=30):
         self._host = host
         self._port = port
         self._entry_id = entry_id
@@ -366,7 +367,7 @@ class ArubaPortLinkStatusSensor(SensorEntity):
         self._attr_unique_id = f"{host}_{port}_link_status"
         self._attr_icon = "mdi:ethernet"
         
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
         self._state = "unknown"
         self._available = True
         self._attr_extra_state_attributes = {}
@@ -415,7 +416,7 @@ class ArubaPortLinkStatusSensor(SensorEntity):
 class ArubaPortSpeedSensor(SensorEntity):
     """Sensor for port speed."""
     
-    def __init__(self, host, username, password, ssh_port, port, entry_id):
+    def __init__(self, host, username, password, ssh_port, port, entry_id, refresh_interval=30):
         self._host = host
         self._port = port
         self._entry_id = entry_id
@@ -425,7 +426,7 @@ class ArubaPortSpeedSensor(SensorEntity):
         self._attr_icon = "mdi:speedometer"
         self._attr_unit_of_measurement = "Mbps"
         
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
         self._state = 0
         self._available = True
 
