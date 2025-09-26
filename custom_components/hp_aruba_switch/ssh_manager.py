@@ -13,7 +13,7 @@ _CONNECTION_SEMAPHORE = asyncio.Semaphore(3)  # Max 3 concurrent SSH connections
 class ArubaSSHManager:
     """Manages SSH connections to Aruba switches with connection pooling and retry logic."""
     
-    def __init__(self, host: str, username: str, password: str, ssh_port: int = 22, bulk_update_interval: int = 30):
+    def __init__(self, host: str, username: str, password: str, ssh_port: int = 22):
         self.host = host
         self.username = username
         self.password = password
@@ -23,17 +23,7 @@ class ArubaSSHManager:
         self._connection_backoff = 0.1  # Start with very short backoff
         self._max_backoff = 5.0  # Maximum backoff in seconds
         
-        # Cache management
-        self._cache_lock = asyncio.Lock()
-        self._interface_cache = {}
-        self._statistics_cache = {}
-        self._link_cache = {}
-        self._poe_cache = {}
-        self._version_cache = {}
-        self._last_bulk_update = 0
-        self._bulk_update_interval = bulk_update_interval
-        
-        # Availability tracking
+        # Simple availability tracking
         self._is_available = True
         self._last_successful_connection = 0
         
@@ -285,16 +275,20 @@ class ArubaSSHManager:
     
     def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict, dict]:
         """Parse the combined output from all commands."""
+        _LOGGER.error(f"🚨 PARSING STARTED! Output length: {len(output)} for {self.host}")
         _LOGGER.debug(f"🔍 _parse_combined_output starting, output length: {len(output)}")
         interfaces = {}
         statistics = {}
         link_details = {}
         poe_ports = {}
         version_info = {}
+        _LOGGER.error(f"🚨 PARSING CHECKPOINT 1: Dictionaries initialized for {self.host}")
         
         # Split output by command boundaries - look for command echoes or patterns
         _LOGGER.debug(f"🔪 Starting output splitting")
+        _LOGGER.error(f"🚨 PARSING CHECKPOINT 2: About to call _split_output_by_commands for {self.host}")
         sections = self._split_output_by_commands(output, commands)
+        _LOGGER.error(f"🚨 PARSING CHECKPOINT 3: _split_output_by_commands completed, got {len(sections)} sections for {self.host}")
         _LOGGER.debug(f"✂️ Output splitting completed, got {len(sections)} sections")
         
         for i, (cmd, section_output) in enumerate(sections.items()):
@@ -358,11 +352,13 @@ class ArubaSSHManager:
     
     def _split_output_by_commands(self, output: str, commands: list) -> dict:
         """Split the combined output into sections for each command."""
+        _LOGGER.error(f"🚨 SPLIT_OUTPUT_BY_COMMANDS STARTED for {self.host} with {len(commands)} commands")
         sections = {}
         current_section = ""
         current_command = None
         
         lines = output.split('\n')
+        _LOGGER.error(f"🚨 SPLIT_OUTPUT: Split into {len(lines)} lines for {self.host}")
         
         for line in lines:
             line_stripped = line.strip()
@@ -736,6 +732,45 @@ class ArubaSSHManager:
         _LOGGER.debug(f"Parsed version info: {version_info}")
         return version_info
 
+    async def get_current_data(self) -> dict:
+        """Get current data from switch - no caching, just live data."""
+        try:
+            _LOGGER.debug(f"🔄 Getting live data for {self.host}")
+            # Execute all commands in a single session
+            interfaces, statistics, link_details, poe_ports, version_info = await self.get_all_switch_data()
+            _LOGGER.debug(f"✅ get_all_switch_data completed for {self.host}")
+            
+            if interfaces or statistics or link_details or poe_ports or version_info:
+                # Mark as available and update successful connection time
+                was_offline = not self._is_available
+                self._is_available = True
+                self._last_successful_connection = time.time()
+                if was_offline:
+                    _LOGGER.info(f"Switch {self.host} is back online")
+                
+                # Return structured data for coordinator
+                return {
+                    "interfaces": interfaces,
+                    "statistics": statistics,
+                    "link_details": link_details,
+                    "poe_ports": poe_ports,
+                    "version_info": version_info,
+                    "available": True
+                }
+            else:
+                _LOGGER.warning(f"❌ No data received from {self.host}")
+                self._is_available = False
+                return {"available": False}
+                
+        except Exception as e:
+            _LOGGER.error(f"❌ Failed to get data from {self.host}: {e}")
+            # Update availability status
+            was_online = self._is_available
+            self._is_available = False
+            if was_online:
+                _LOGGER.warning(f"Switch {self.host} went offline (data error: {e})")
+            return {"available": False}
+
     async def refresh_bulk_cache(self) -> bool:
         """Update the bulk cache with fresh data from the switch using single session."""
         import time
@@ -791,26 +826,7 @@ class ArubaSSHManager:
                     _LOGGER.warning(f"Switch {self.host} went offline (refresh error: {e})")
                 return False
 
-    async def force_cache_refresh(self) -> bool:
-        """Force an immediate cache refresh, ignoring timeout intervals."""
-        try:
-            async with self._cache_lock:
-                self._last_bulk_update = 0  # Reset timestamp to force refresh
-            
-            _LOGGER.debug(f"🔄 Starting force cache refresh for {self.host}")
-            result = await asyncio.wait_for(self.refresh_bulk_cache(), timeout=30.0)
-            _LOGGER.debug(f"✅ Force cache refresh completed for {self.host}: {result}")
-            return result
-        except asyncio.TimeoutError:
-            _LOGGER.error(f"❌ Force cache refresh timed out after 45s for {self.host}")
-            async with self._cache_lock:
-                self._is_available = False
-            return False
-        except Exception as e:
-            _LOGGER.error(f"❌ Force cache refresh failed for {self.host}: {e}")
-            async with self._cache_lock:
-                self._is_available = False
-            return False
+
 
     async def is_switch_available(self) -> bool:
         """Check if the switch is currently available (connected)."""
@@ -912,9 +928,9 @@ class ArubaSSHManager:
 # Global connection managers
 _connection_managers: Dict[str, ArubaSSHManager] = {}
 
-def get_ssh_manager(host: str, username: str, password: str, ssh_port: int = 22, refresh_interval: int = 30) -> ArubaSSHManager:
-    """Get or create an SSH manager for the given host with configurable refresh interval."""
+def get_ssh_manager(host: str, username: str, password: str, ssh_port: int = 22) -> ArubaSSHManager:
+    """Get or create an SSH manager for the given host."""
     key = f"{host}:{ssh_port}"
     if key not in _connection_managers:
-        _connection_managers[key] = ArubaSSHManager(host, username, password, ssh_port, refresh_interval)
+        _connection_managers[key] = ArubaSSHManager(host, username, password, ssh_port)
     return _connection_managers[key]

@@ -157,22 +157,29 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
             return
             
         try:
-            # Get data from coordinator's SSH manager cache - NO SSH CALLS HERE
-            ssh_manager = self._coordinator.ssh_manager
+            # Get data from coordinator's data - NO SSH CALLS HERE
+            if not self._coordinator.data or not self._coordinator.data.get("available", False):
+                self._attr_available = False
+                return
+                
+            # Read from the live data that coordinator fetched
+            interfaces = self._coordinator.data.get("interfaces", {})
+            statistics = self._coordinator.data.get("statistics", {})
+            link_details = self._coordinator.data.get("link_details", {})
+            poe_ports = self._coordinator.data.get("poe_ports", {})
             
-            # Read from the cached data that coordinator already fetched
-            status = ssh_manager._interface_cache.get(self._port, {}) if self._is_poe else ssh_manager._interface_cache.get(self._port, {})
-            statistics = ssh_manager._statistics_cache.get(self._port, {})  
-            link_details = ssh_manager._link_cache.get(self._port, {})
+            status = interfaces.get(self._port, {})
+            port_statistics = statistics.get(self._port, {})  
+            port_link_details = link_details.get(self._port, {})
             
             if self._is_poe:
-                # Get PoE status from cache
-                poe_status = ssh_manager._poe_cache.get(self._port, {})
+                # Get PoE status from live data
+                poe_status = poe_ports.get(self._port, {})
                 status.update(poe_status)  # Merge PoE data with interface data
             
-            _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} - cached status: {status}, stats: {statistics}, link: {link_details}")
+            _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} - live status: {status}, stats: {port_statistics}, link: {port_link_details}")
             
-            # Update entity state based on cached data
+            # Update entity state based on live data
             if self._is_poe:
                 # Parse PoE status from cached data
                 power_enable = status.get("power_enable", False)

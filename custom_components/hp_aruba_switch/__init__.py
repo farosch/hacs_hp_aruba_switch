@@ -28,8 +28,7 @@ class ArubaSwitchCoordinator(DataUpdateCoordinator):
             entry.data["host"],
             entry.data["username"], 
             entry.data["password"],
-            entry.data.get("ssh_port", 22),
-            refresh_interval
+            entry.data.get("ssh_port", 22)
         )
         
         super().__init__(
@@ -40,18 +39,19 @@ class ArubaSwitchCoordinator(DataUpdateCoordinator):
         )
     
     async def _async_update_data(self):
-        """Fetch data from switch using single SSH session."""
+        """Fetch live data from switch - no caching."""
         try:
             _LOGGER.debug("⏳ Starting coordinator data update for %s", self.host)
-            # Force a cache refresh to get latest data
-            success = await self.ssh_manager.force_cache_refresh()
-            if not success:
-                _LOGGER.error("❌ SSH cache refresh failed for %s", self.host)
-                raise UpdateFailed(f"Failed to fetch data from switch {self.host}")
+            # Get live data directly  
+            data = await self.ssh_manager.get_current_data()
+            
+            if not data.get("available", False):
+                _LOGGER.error("❌ Switch %s is offline or returned no data", self.host)
+                raise UpdateFailed(f"Switch {self.host} is offline")
             
             _LOGGER.debug("✅ Coordinator data update completed for %s", self.host)
-            # Return success indicator - entities will read from cache
-            return {"last_update": self.hass.loop.time()}
+            # Return the actual switch data for entities to use
+            return data
             
         except Exception as err:
             _LOGGER.error("❌ Coordinator update error for %s: %s", self.host, err)
@@ -74,7 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Fetch initial data with timeout
     _LOGGER.info("📊 Fetching initial data for %s", entry.data["host"])
     try:
-        await asyncio.wait_for(coordinator.async_config_entry_first_refresh(), timeout=40.0)
+        await coordinator.async_config_entry_first_refresh()
         _LOGGER.info("✅ Initial data fetch completed for %s", entry.data["host"])
     except asyncio.TimeoutError:
         _LOGGER.error("❌ Initial data fetch timed out after 60 seconds for %s", entry.data["host"])
