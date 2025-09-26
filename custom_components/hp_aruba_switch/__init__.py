@@ -69,12 +69,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Set up switch platform
     await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
     
+    # TODO: Re-enable sensors after updating them to use coordinator pattern
+    # The sensor.py and binary_sensor.py files need to be completely rewritten
+    # to use CoordinatorEntity instead of individual SSH managers
+    _LOGGER.warning("Sensors temporarily disabled - need coordinator pattern update")
+    
     # Add a small delay before setting up sensors to allow switch initialization
-    import asyncio
-    await asyncio.sleep(2)
+    # import asyncio
+    # await asyncio.sleep(2)
     
     # Then set up sensor and binary_sensor platforms
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
+    # await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
     
     # Add update listener for options flow
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))

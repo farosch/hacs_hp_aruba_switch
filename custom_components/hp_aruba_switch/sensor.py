@@ -12,13 +12,12 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up Aruba switch sensors from a config entry."""
     _LOGGER.debug("HP/Aruba Switch sensor integration starting setup")
-    host = config_entry.data["host"]
-    username = config_entry.data["username"]
-    password = config_entry.data["password"]
-    ssh_port = config_entry.data.get("ssh_port", 22)
-    # Get configured port count (default to 24 if not set)
+    
+    # Get the coordinator from hass.data
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    
+    # Get configured port count (default to 24 if not set)  
     port_count = config_entry.data.get("port_count", 24)
-    refresh_interval = config_entry.data.get("refresh_interval", 30)
     
     # Note: Activity sensors are created for ALL ports regardless of exclusion lists
     # This allows monitoring traffic even on ports that don't have control switches
@@ -28,27 +27,22 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     ports = [str(i) for i in range(1, port_count + 1)]
     entities = []
 
-    # Test SSH connectivity during setup
-    ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
-    test_result = await ssh_manager.execute_command("show version", timeout=10)
-    _LOGGER.info(f"SSH connectivity test for sensors {host}: {'SUCCESS' if test_result else 'FAILED'}")
-
     for port in ports:
         # Add port activity sensor for ALL ports (exclusion lists don't apply to sensors)
-        entities.append(ArubaPortActivitySensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
+        entities.append(ArubaPortActivitySensor(coordinator, port, config_entry.entry_id))
         
         # Add individual statistic sensors for each port
-        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in", refresh_interval))
-        entities.append(ArubaPortBytesSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out", refresh_interval))
-        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "in", refresh_interval))
-        entities.append(ArubaPortPacketsSensor(host, username, password, ssh_port, port, config_entry.entry_id, "out", refresh_interval))
-        entities.append(ArubaPortLinkStatusSensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
-        entities.append(ArubaPortSpeedSensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
+        entities.append(ArubaPortBytesSensor(coordinator, port, config_entry.entry_id, "in"))
+        entities.append(ArubaPortBytesSensor(coordinator, port, config_entry.entry_id, "out"))
+        entities.append(ArubaPortPacketsSensor(coordinator, port, config_entry.entry_id, "in"))
+        entities.append(ArubaPortPacketsSensor(coordinator, port, config_entry.entry_id, "out"))
+        entities.append(ArubaPortLinkStatusSensor(coordinator, port, config_entry.entry_id))
+        entities.append(ArubaPortSpeedSensor(coordinator, port, config_entry.entry_id))
 
     # Add switch version and firmware sensors (one per switch)
-    entities.append(ArubaSwitchFirmwareSensor(host, username, password, ssh_port, config_entry.entry_id, refresh_interval))
-    entities.append(ArubaSwitchModelSensor(host, username, password, ssh_port, config_entry.entry_id, refresh_interval))
-    entities.append(ArubaSwitchSerialSensor(host, username, password, ssh_port, config_entry.entry_id, refresh_interval))
+    entities.append(ArubaSwitchFirmwareSensor(coordinator, config_entry.entry_id))
+    entities.append(ArubaSwitchModelSensor(coordinator, config_entry.entry_id))
+    entities.append(ArubaSwitchSerialSensor(coordinator, config_entry.entry_id))
 
     _LOGGER.debug(f"Created {len(entities)} sensors for all {len(ports)} ports plus 3 switch info sensors: "
                  f"activity, bytes, packets, link status, speed, firmware version, model, and serial number")
