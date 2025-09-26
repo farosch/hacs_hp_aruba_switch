@@ -459,6 +459,10 @@ class ArubaSSHManager:
                 # Smart parsing logic: handle any whitespace variation for "Port Enabled"
                 import re
                 
+                # Debug: Log every line that contains "enabled" to see what we're working with
+                if "enabled" in line_lower:
+                    _LOGGER.debug(f"Port {current_interface}: DEBUG - Line contains 'enabled': '{line}' (repr: {repr(line)})")
+                
                 # Match "Port Enabled" with any amount of whitespace, followed by colon
                 port_enabled_match = re.match(r'\s*port\s+enabled\s*:', line_lower)
                 if port_enabled_match and ":" in line:
