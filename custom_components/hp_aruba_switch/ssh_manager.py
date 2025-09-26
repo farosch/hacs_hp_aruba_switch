@@ -717,7 +717,7 @@ class ArubaSSHManager:
             # Only update if enough time has passed
             if current_time - self._last_bulk_update < self._bulk_update_interval:
                 return True  # Cache is still fresh
-            
+        
             try:
                 # Execute all commands in a single session
                 interfaces, statistics, link_details, poe_ports, version_info = await self.get_all_switch_data()
@@ -750,7 +750,7 @@ class ArubaSSHManager:
                     if was_online:
                         _LOGGER.warning(f"Switch {self.host} went offline (no data in refresh)")
                     return False
-                
+                    
             except Exception as e:
                 _LOGGER.error(f"Failed to update bulk cache for {self.host}: {e}")
                 # Mark as unavailable on connection failures

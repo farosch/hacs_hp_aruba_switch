@@ -49,7 +49,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         if port not in exclude_poe:
             entities.append(ArubaSwitch(host, username, password, ssh_port, port, True, config_entry.entry_id, refresh_interval))
 
-    async_add_entities(entities, update_before_add=True)
+    async_add_entities(entities, update_before_add=False)
 
 
 class ArubaSwitch(SwitchEntity):
