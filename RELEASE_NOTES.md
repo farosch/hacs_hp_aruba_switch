@@ -1,6 +1,54 @@
 # Release Notes
 
-## Version 1.0.7 - Comprehensive Monitoring & Enhanced Features
+## Version 1.0.7 - Comprehensive Monitorin### 🔌 **Offline Handling & Reliability** 🆕
+
+#### **Comprehensive Offline Detection**
+- Automatic detection when switch becomes unreachable
+- Multiple detection methods: SSH timeouts, connection errors, no data response
+- Timeout-based detection for long-term offline switches (3× refresh interval)
+
+#### **Entity Availability Management**
+- All entities become "unavailable" in Home Assistant when switch is offline
+- No stale cached data displayed during network outages
+- Automatic recovery when switch connectivity is restored
+- Graceful command failures with informative warnings
+
+#### **Enhanced Monitoring & Logging**
+- Clear state transition logs: "Switch X.X.X.X went offline" / "is back online"
+- Specific failure reason reporting (timeout, connection error, no data)
+- Smart logging that only reports actual state changes (reduces log noise)
+- Manual connectivity testing capability for diagnostics
+
+#### **User-Friendly Experience**
+- No manual intervention required for offline/online transitions
+- Clear visual feedback in Home Assistant (unavailable vs stale data)
+- Reliable recovery without needing integration restart
+- Better troubleshooting with informative error messages
+
+### ⚙️ **Technical Improvements**
+
+#### **Critical Parsing Fix** 🐛
+- Fixed major bug where all ports showed as "off" despite being administratively enabled
+- Root cause: "Port Enabled" lines were misidentified as interface headers
+- Improved interface header detection to prevent parsing conflicts
+- All ports now correctly display their administrative enable/disable state
+
+#### **Optimized SSH Operations** 
+- Single SSH session for all commands instead of multiple connections
+- Combined command execution with intelligent output parsing
+- Reduced connection overhead and improved reliability
+
+#### **Enhanced HP/Aruba Compatibility**
+- Better parsing of comma-separated statistics
+- Improved interface brief format support  
+- Enhanced PoE status detection and parsing
+- Support for various HP/Aruba output formats
+
+#### **Rich Entity Attributes**
+- Switch entities expose comprehensive port data
+- Traffic statistics, link details, and timestamps
+- PoE entities include detailed power information
+- Perfect for advanced automations and dashboardsres
 **September 25, 2025**
 
 ### ✨ **New Monitoring Features**
@@ -24,6 +72,12 @@
 - Simple on/off connectivity status per port
 - Rich attributes with detailed link information
 - Perfect for automations and notifications
+
+#### **Switch Connectivity Sensor** 🆕
+- Real-time switch online/offline status monitoring
+- Dedicated binary sensor showing switch connectivity state
+- Detailed attributes including last successful connection time
+- Essential for network monitoring and alerting
 
 ### ⚙️ **Configuration Enhancements**
 
