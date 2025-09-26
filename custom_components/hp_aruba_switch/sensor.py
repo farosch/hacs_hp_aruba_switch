@@ -51,13 +51,14 @@ class ArubaPortLinkStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
             return "unknown"
             
-        # Get port data from coordinator's SSH manager cache
-        port_data = self.coordinator.ssh_manager.get_port_status(self._port)
+        # Get port data from coordinator live data
+        interfaces = self.coordinator.data.get("interfaces", {})
+        port_data = interfaces.get(str(self._port), {})
         if port_data:
-            return port_data.get("link_status", "unknown")
+            return "up" if port_data.get("link_up", False) else "down"
         return "unknown"
         
     @property
@@ -81,14 +82,15 @@ class ArubaPortActivitySensor(CoordinatorEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
             return "unknown"
             
-        # Get port data from coordinator's SSH manager cache
-        port_data = self.coordinator.ssh_manager.get_port_status(self._port)
-        if port_data:
-            bytes_in = port_data.get("bytes_rx", 0)
-            bytes_out = port_data.get("bytes_tx", 0)
+        # Get port statistics from coordinator live data
+        statistics = self.coordinator.data.get("statistics", {})
+        port_stats = statistics.get(str(self._port), {})
+        if port_stats:
+            bytes_in = port_stats.get("bytes_in", 0)
+            bytes_out = port_stats.get("bytes_out", 0)
             total_bytes = bytes_in + bytes_out
             
             if total_bytes > 1000:  # More than 1KB indicates activity
@@ -133,11 +135,11 @@ class ArubaSwitchFirmwareSensor(CoordinatorEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
             return "unknown"
             
-        # Get version data from coordinator's SSH manager cache
-        version_data = self.coordinator.ssh_manager.get_version_info()
+        # Get version data from coordinator live data
+        version_data = self.coordinator.data.get("version_info", {})
         if version_data:
             return version_data.get("firmware_version", "unknown")
         return "unknown"
@@ -162,11 +164,11 @@ class ArubaSwitchModelSensor(CoordinatorEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
             return "unknown"
             
-        # Get version data from coordinator's SSH manager cache
-        version_data = self.coordinator.ssh_manager.get_version_info()
+        # Get version data from coordinator live data
+        version_data = self.coordinator.data.get("version_info", {})
         if version_data:
             return version_data.get("model", "unknown")
         return "unknown"
