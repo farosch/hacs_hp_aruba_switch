@@ -463,9 +463,9 @@ class ArubaSSHManager:
                 if "enabled" in line_lower:
                     _LOGGER.debug(f"Port {current_interface}: DEBUG - Line contains 'enabled': '{line}' (repr: {repr(line)})")
                 
-                # Normalize whitespace and check for "port enabled :" pattern
+                # Normalize whitespace and check for "port enabled" followed by colon pattern
                 normalized_line = re.sub(r'\s+', ' ', line_lower.strip())
-                if normalized_line.startswith('port enabled :') or 'port enabled :' in normalized_line:
+                if ('port enabled :' in normalized_line) or ('port enabled:' in normalized_line):
                     value_part = line.split(":", 1)[1].strip().lower()
                     is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
                     interfaces[current_interface]["port_enabled"] = is_enabled
@@ -473,7 +473,7 @@ class ArubaSSHManager:
                     _LOGGER.debug(f"Port {current_interface}: Found 'Port Enabled' line: '{line}' -> value_part: '{value_part}' -> is_enabled: {is_enabled}")
                 
                 # Bulletproof parsing: use simple string matching with whitespace normalization for Link Status  
-                elif normalized_line.startswith('link status :') or 'link status :' in normalized_line:
+                elif ('link status :' in normalized_line) or ('link status:' in normalized_line):
                     value_part = line.split(":", 1)[1].strip().lower()
                     link_up = "up" in value_part
                     interfaces[current_interface]["link_status"] = "up" if link_up else "down"
