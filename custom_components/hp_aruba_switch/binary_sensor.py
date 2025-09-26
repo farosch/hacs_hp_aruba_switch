@@ -52,3 +52,13 @@ class ArubaSwitchConnectivitySensor(CoordinatorEntity, BinarySensorEntity):
             "host": self.coordinator.host,
             "last_update": self.coordinator.last_update_success if hasattr(self.coordinator, 'last_update_success') else "unknown",
         }
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }

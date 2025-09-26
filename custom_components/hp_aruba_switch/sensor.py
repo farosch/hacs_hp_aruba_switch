@@ -57,6 +57,7 @@ class ArubaPortLinkStatusSensor(CoordinatorEntity, SensorEntity):
         # Get port link data from coordinator live data (link status is in link_details, not interfaces)
         link_details = self.coordinator.data.get("link_details", {})
         port_data = link_details.get(str(self._port), {})
+        _LOGGER.debug(f"🔍 Link status sensor port {self._port}: link_details keys = {list(link_details.keys())}, port_data = {port_data}")
         if port_data:
             return "up" if port_data.get("link_up", False) else "down"
         return "unknown"
@@ -65,6 +66,16 @@ class ArubaPortLinkStatusSensor(CoordinatorEntity, SensorEntity):
     def available(self):
         """Return if entity is available."""
         return self.coordinator.last_update_success
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }
 
 
 class ArubaPortActivitySensor(CoordinatorEntity, SensorEntity):
@@ -88,6 +99,7 @@ class ArubaPortActivitySensor(CoordinatorEntity, SensorEntity):
         # Get port statistics from coordinator live data (correct keys are bytes_rx/bytes_tx)
         statistics = self.coordinator.data.get("statistics", {})
         port_stats = statistics.get(str(self._port), {})
+        _LOGGER.debug(f"🔍 Activity sensor port {self._port}: statistics keys = {list(statistics.keys())}, port_stats = {port_stats}")
         if port_stats:
             bytes_rx = port_stats.get("bytes_rx", 0)
             bytes_tx = port_stats.get("bytes_tx", 0)
@@ -120,6 +132,16 @@ class ArubaPortActivitySensor(CoordinatorEntity, SensorEntity):
     def available(self):
         """Return if entity is available."""
         return self.coordinator.last_update_success
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }
 
 
 class ArubaSwitchFirmwareSensor(CoordinatorEntity, SensorEntity):
@@ -141,6 +163,7 @@ class ArubaSwitchFirmwareSensor(CoordinatorEntity, SensorEntity):
             
         # Get version data from coordinator live data
         version_data = self.coordinator.data.get("version_info", {})
+        _LOGGER.debug(f"🔍 Firmware sensor: version_data = {version_data}")
         if version_data:
             return version_data.get("firmware_version", "unknown")
         return "unknown"
@@ -149,6 +172,16 @@ class ArubaSwitchFirmwareSensor(CoordinatorEntity, SensorEntity):
     def available(self):
         """Return if entity is available."""
         return self.coordinator.last_update_success
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }
 
 
 class ArubaSwitchModelSensor(CoordinatorEntity, SensorEntity):
@@ -170,6 +203,7 @@ class ArubaSwitchModelSensor(CoordinatorEntity, SensorEntity):
             
         # Get version data from coordinator live data
         version_data = self.coordinator.data.get("version_info", {})
+        _LOGGER.debug(f"🔍 Model sensor: version_data = {version_data}")
         if version_data:
             return version_data.get("model", "unknown")
         return "unknown"
@@ -178,3 +212,13 @@ class ArubaSwitchModelSensor(CoordinatorEntity, SensorEntity):
     def available(self):
         """Return if entity is available."""
         return self.coordinator.last_update_success
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }
