@@ -419,9 +419,10 @@ class ArubaSSHManager:
                 continue
                 
             # Look for interface headers - try multiple patterns
+            # CRITICAL: Don't match "Port Enabled" lines as interface headers!
             if ("port counters for port" in line.lower() or 
                 "interface" in line.lower() and any(x in line.lower() for x in ["port", "ethernet", "gi", "fa", "te"]) or
-                line.lower().startswith("port") or
+                (line.lower().startswith("port") and "port counters" in line.lower()) or
                 ("status and counters" in line.lower() and "port" in line.lower())):
                 
                 try:
