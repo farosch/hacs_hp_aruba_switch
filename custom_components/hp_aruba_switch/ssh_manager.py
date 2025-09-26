@@ -255,18 +255,21 @@ class ArubaSSHManager:
         # Combine all commands into a single multi-line command
         combined_command = "\n".join(commands)
         
-        _LOGGER.debug(f"Executing combined commands in single session: {commands}")
+        _LOGGER.debug(f"🔗 Executing combined commands in single session: {commands}")
         result = await self.execute_command(combined_command, timeout=30)
         
         if not result:
-            _LOGGER.warning(f"Combined command execution failed for {self.host}")
+            _LOGGER.warning(f"❌ Combined command execution failed for {self.host}")
             return {}, {}, {}, {}, {}
         
-        _LOGGER.info(f"Successfully executed {len(commands)} commands in single session for {self.host}")
-        _LOGGER.debug(f"Combined output length: {len(result)} characters")
+        _LOGGER.info(f"✅ Successfully executed {len(commands)} commands in single session for {self.host}")
+        _LOGGER.debug(f"📊 Combined output length: {len(result)} characters")
         
         # Parse the combined output
-        return self._parse_combined_output(result, commands)
+        _LOGGER.debug(f"🔍 Starting to parse combined output for {self.host}")
+        parsed_result = self._parse_combined_output(result, commands)
+        _LOGGER.debug(f"✅ Parsing completed for {self.host}")
+        return parsed_result
     
     def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict, dict]:
         """Parse the combined output from all commands."""
@@ -716,11 +719,14 @@ class ArubaSSHManager:
         async with self._cache_lock:
             # Only update if enough time has passed
             if current_time - self._last_bulk_update < self._bulk_update_interval:
+                _LOGGER.debug(f"📋 Cache still fresh for {self.host}, skipping refresh")
                 return True  # Cache is still fresh
         
             try:
+                _LOGGER.debug(f"🔄 Starting get_all_switch_data for {self.host}")
                 # Execute all commands in a single session
                 interfaces, statistics, link_details, poe_ports, version_info = await self.get_all_switch_data()
+                _LOGGER.debug(f"✅ get_all_switch_data completed for {self.host}")
                 
                 if interfaces or statistics or link_details or poe_ports or version_info:
                     # Update all caches with fresh data
@@ -762,9 +768,24 @@ class ArubaSSHManager:
 
     async def force_cache_refresh(self) -> bool:
         """Force an immediate cache refresh, ignoring timeout intervals."""
-        async with self._cache_lock:
-            self._last_bulk_update = 0  # Reset timestamp to force refresh
-        return await self.refresh_bulk_cache()
+        try:
+            async with self._cache_lock:
+                self._last_bulk_update = 0  # Reset timestamp to force refresh
+            
+            _LOGGER.debug(f"🔄 Starting force cache refresh for {self.host}")
+            result = await asyncio.wait_for(self.refresh_bulk_cache(), timeout=45.0)
+            _LOGGER.debug(f"✅ Force cache refresh completed for {self.host}: {result}")
+            return result
+        except asyncio.TimeoutError:
+            _LOGGER.error(f"❌ Force cache refresh timed out after 45s for {self.host}")
+            async with self._cache_lock:
+                self._is_available = False
+            return False
+        except Exception as e:
+            _LOGGER.error(f"❌ Force cache refresh failed for {self.host}: {e}")
+            async with self._cache_lock:
+                self._is_available = False
+            return False
 
     async def is_switch_available(self) -> bool:
         """Check if the switch is currently available (connected)."""

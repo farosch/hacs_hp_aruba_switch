@@ -1,4 +1,4 @@
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -6,6 +6,7 @@ from datetime import timedelta
 from .const import DOMAIN
 from .ssh_manager import get_ssh_manager
 import logging
+import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,15 +42,19 @@ class ArubaSwitchCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Fetch data from switch using single SSH session."""
         try:
+            _LOGGER.debug("⏳ Starting coordinator data update for %s", self.host)
             # Force a cache refresh to get latest data
             success = await self.ssh_manager.force_cache_refresh()
             if not success:
+                _LOGGER.error("❌ SSH cache refresh failed for %s", self.host)
                 raise UpdateFailed(f"Failed to fetch data from switch {self.host}")
             
+            _LOGGER.debug("✅ Coordinator data update completed for %s", self.host)
             # Return success indicator - entities will read from cache
             return {"last_update": self.hass.loop.time()}
             
         except Exception as err:
+            _LOGGER.error("❌ Coordinator update error for %s: %s", self.host, err)
             raise UpdateFailed(f"Error communicating with switch {self.host}: {err}")
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -66,10 +71,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     coordinator = ArubaSwitchCoordinator(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
-    # Fetch initial data
+    # Fetch initial data with timeout
     _LOGGER.info("📊 Fetching initial data for %s", entry.data["host"])
-    await coordinator.async_config_entry_first_refresh()
-    _LOGGER.info("✅ Initial data fetch completed for %s", entry.data["host"])
+    try:
+        await asyncio.wait_for(coordinator.async_config_entry_first_refresh(), timeout=60.0)
+        _LOGGER.info("✅ Initial data fetch completed for %s", entry.data["host"])
+    except asyncio.TimeoutError:
+        _LOGGER.error("❌ Initial data fetch timed out after 60 seconds for %s", entry.data["host"])
+        raise ConfigEntryNotReady(f"Switch {entry.data['host']} did not respond within timeout")
 
     # Set up switch platform
     _LOGGER.info("🔌 Setting up switch platform for %s", entry.data["host"]) 
