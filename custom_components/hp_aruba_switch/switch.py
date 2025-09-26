@@ -157,7 +157,9 @@ class ArubaSwitch(SwitchEntity):
             await self.async_update()
             self.async_write_ha_state()
         else:
+            # Command failed - switch may be offline
             self._available = False
+            _LOGGER.warning(f"Failed to turn on {self._attr_name} - switch may be offline")
             self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
@@ -179,7 +181,9 @@ class ArubaSwitch(SwitchEntity):
             await self.async_update()
             self.async_write_ha_state()
         else:
+            # Command failed - switch may be offline
             self._available = False
+            _LOGGER.warning(f"Failed to turn off {self._attr_name} - switch may be offline")
             self.async_write_ha_state()
 
     async def async_update(self):
@@ -203,6 +207,12 @@ class ArubaSwitch(SwitchEntity):
             link_details = await self._ssh_manager.get_port_link_status(self._port)
             
             _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} - status: {status}, stats: {statistics}, link: {link_details}")
+            
+            # Check if switch is available (all data methods return None when offline)
+            if status is None or statistics is None or link_details is None:
+                self._available = False
+                _LOGGER.debug(f"Switch appears offline for port {self._port} {'PoE' if self._is_poe else ''} - marking entity as unavailable")
+                return
             
             if status:
                 self._available = True
