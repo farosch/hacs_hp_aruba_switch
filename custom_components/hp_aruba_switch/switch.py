@@ -205,15 +205,15 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
             import datetime
             self._attr_extra_state_attributes.update({
                 "port_number": self._port,
-                "link_status": "up" if link_details.get("link_up", False) else "down",
-                "link_speed": link_details.get("link_speed", "unknown"),
-                "duplex": link_details.get("duplex", "unknown"),
-                "auto_negotiation": link_details.get("auto_negotiation", "unknown"),
-                "cable_type": link_details.get("cable_type", "unknown"),
-                "bytes_in": statistics.get("bytes_in", 0),
-                "bytes_out": statistics.get("bytes_out", 0),
-                "packets_in": statistics.get("packets_in", 0),
-                "packets_out": statistics.get("packets_out", 0),
+                "link_status": "up" if port_link_details.get("link_up", False) else "down",
+                "link_speed": port_link_details.get("link_speed", "unknown"),
+                "duplex": port_link_details.get("duplex", "unknown"),
+                "auto_negotiation": port_link_details.get("auto_negotiation", "unknown"),
+                "cable_type": port_link_details.get("cable_type", "unknown"),
+                "bytes_in": port_statistics.get("bytes_rx", 0),
+                "bytes_out": port_statistics.get("bytes_tx", 0),
+                "packets_in": port_statistics.get("unicast_rx", 0),
+                "packets_out": port_statistics.get("unicast_tx", 0),
                 "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
             
