@@ -45,7 +45,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         entities.append(ArubaPortLinkStatusSensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
         entities.append(ArubaPortSpeedSensor(host, username, password, ssh_port, port, config_entry.entry_id, refresh_interval))
 
-    _LOGGER.debug(f"Created {len(entities)} sensors for all {len(ports)} ports: activity, bytes, packets, link status, and speed sensors")
+    # Add switch version and firmware sensors (one per switch)
+    entities.append(ArubaSwitchFirmwareSensor(host, username, password, ssh_port, config_entry.entry_id, refresh_interval))
+    entities.append(ArubaSwitchModelSensor(host, username, password, ssh_port, config_entry.entry_id, refresh_interval))
+    entities.append(ArubaSwitchSerialSensor(host, username, password, ssh_port, config_entry.entry_id, refresh_interval))
+
+    _LOGGER.debug(f"Created {len(entities)} sensors for all {len(ports)} ports plus 3 switch info sensors: "
+                 f"activity, bytes, packets, link status, speed, firmware version, model, and serial number")
     # Add entities without immediate update to avoid overwhelming the switch during setup
     async_add_entities(entities, update_before_add=False)
 
@@ -500,4 +506,285 @@ class ArubaPortSpeedSensor(SensorEntity):
                 
         except Exception as e:
             _LOGGER.debug(f"Failed to update speed sensor for port {self._port}: {e}")
+            self._available = False
+
+
+class ArubaSwitchFirmwareSensor(SensorEntity):
+    """Representation of an Aruba switch firmware version sensor."""
+    
+    def __init__(self, host, username, password, ssh_port, entry_id, refresh_interval=30):
+        """Initialize the firmware version sensor."""
+        self._host = host
+        self._username = username
+        self._password = password
+        self._ssh_port = ssh_port
+        self._refresh_interval = refresh_interval
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
+        
+        # Entity properties
+        self._attr_name = f"Switch {host} Firmware Version"
+        self._attr_unique_id = f"{entry_id}_firmware_version"
+        self._attr_icon = "mdi:memory"
+        
+        # State properties
+        self._state = None
+        self._available = True
+        self._attr_extra_state_attributes = {}
+        
+        # Update management
+        self._last_update = 0
+        import random
+        self._update_offset = random.uniform(0, 5)
+        self._update_interval = refresh_interval * 2  # Update less frequently for version info
+
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self._available
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attr_extra_state_attributes
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": f"Switch {self._host}",
+            "manufacturer": "Aruba",
+            "model": "Switch",
+        }
+
+    async def async_update(self):
+        """Update the firmware version sensor."""
+        import time
+        current_time = time.time()
+        
+        # Calculate time since last update with staggered offset
+        time_since_update = current_time - (self._last_update + self._update_offset)
+        
+        # Only update if enough time has passed
+        if time_since_update < self._update_interval:
+            return
+            
+        self._last_update = current_time
+        
+        try:
+            version_info = await self._ssh_manager.get_version_info()
+            
+            if version_info is None:
+                # Switch is offline
+                self._available = False
+                return
+                
+            if version_info:
+                self._available = True
+                self._state = version_info.get("firmware_version", "Unknown")
+                
+                # Add all version info as attributes
+                import datetime
+                self._attr_extra_state_attributes = {
+                    "host": self._host,
+                    "firmware_version": version_info.get("firmware_version", "Unknown"),
+                    "boot_version": version_info.get("boot_version", "Unknown"),
+                    "hardware_revision": version_info.get("hardware_revision", "Unknown"),
+                    "uptime": version_info.get("uptime", "Unknown"),
+                    "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                
+                _LOGGER.debug(f"Switch firmware version: {self._state}")
+            else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.debug(f"Failed to update firmware sensor for {self._host}: {e}")
+            self._available = False
+
+
+class ArubaSwitchModelSensor(SensorEntity):
+    """Representation of an Aruba switch model sensor."""
+    
+    def __init__(self, host, username, password, ssh_port, entry_id, refresh_interval=30):
+        """Initialize the model sensor."""
+        self._host = host
+        self._username = username
+        self._password = password
+        self._ssh_port = ssh_port
+        self._refresh_interval = refresh_interval
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
+        
+        # Entity properties
+        self._attr_name = f"Switch {host} Model"
+        self._attr_unique_id = f"{entry_id}_model"
+        self._attr_icon = "mdi:router-network"
+        
+        # State properties
+        self._state = None
+        self._available = True
+        self._attr_extra_state_attributes = {}
+        
+        # Update management
+        self._last_update = 0
+        import random
+        self._update_offset = random.uniform(0, 5)
+        self._update_interval = refresh_interval * 2  # Update less frequently
+
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self._available
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attr_extra_state_attributes
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": f"Switch {self._host}",
+            "manufacturer": "Aruba",
+            "model": "Switch",
+        }
+
+    async def async_update(self):
+        """Update the model sensor."""
+        import time
+        current_time = time.time()
+        
+        time_since_update = current_time - (self._last_update + self._update_offset)
+        
+        if time_since_update < self._update_interval:
+            return
+            
+        self._last_update = current_time
+        
+        try:
+            version_info = await self._ssh_manager.get_version_info()
+            
+            if version_info is None:
+                self._available = False
+                return
+                
+            if version_info:
+                self._available = True
+                self._state = version_info.get("model", "HP/Aruba Switch")
+                
+                import datetime
+                self._attr_extra_state_attributes = {
+                    "host": self._host,
+                    "model": version_info.get("model", "HP/Aruba Switch"),
+                    "mac_address": version_info.get("mac_address", "Unknown"),
+                    "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+            else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.debug(f"Failed to update model sensor for {self._host}: {e}")
+            self._available = False
+
+
+class ArubaSwitchSerialSensor(SensorEntity):
+    """Representation of an Aruba switch serial number sensor."""
+    
+    def __init__(self, host, username, password, ssh_port, entry_id, refresh_interval=30):
+        """Initialize the serial number sensor."""
+        self._host = host
+        self._username = username
+        self._password = password
+        self._ssh_port = ssh_port
+        self._refresh_interval = refresh_interval
+        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port, refresh_interval)
+        
+        # Entity properties
+        self._attr_name = f"Switch {host} Serial Number"
+        self._attr_unique_id = f"{entry_id}_serial_number"
+        self._attr_icon = "mdi:barcode"
+        
+        # State properties
+        self._state = None
+        self._available = True
+        self._attr_extra_state_attributes = {}
+        
+        # Update management
+        self._last_update = 0
+        import random
+        self._update_offset = random.uniform(0, 5)
+        self._update_interval = refresh_interval * 2  # Update less frequently
+
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self._available
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attr_extra_state_attributes
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self._host)},
+            "name": f"Switch {self._host}",
+            "manufacturer": "Aruba",
+            "model": "Switch",
+        }
+
+    async def async_update(self):
+        """Update the serial number sensor."""
+        import time
+        current_time = time.time()
+        
+        time_since_update = current_time - (self._last_update + self._update_offset)
+        
+        if time_since_update < self._update_interval:
+            return
+            
+        self._last_update = current_time
+        
+        try:
+            version_info = await self._ssh_manager.get_version_info()
+            
+            if version_info is None:
+                self._available = False
+                return
+                
+            if version_info:
+                self._available = True
+                self._state = version_info.get("serial_number", "Unknown")
+                
+                import datetime
+                self._attr_extra_state_attributes = {
+                    "host": self._host,
+                    "serial_number": version_info.get("serial_number", "Unknown"),
+                    "mac_address": version_info.get("mac_address", "Unknown"),
+                    "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+            else:
+                self._available = False
+                
+        except Exception as e:
+            _LOGGER.debug(f"Failed to update serial sensor for {self._host}: {e}")
             self._available = False

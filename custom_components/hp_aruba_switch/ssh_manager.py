@@ -29,6 +29,7 @@ class ArubaSSHManager:
         self._statistics_cache = {}
         self._link_cache = {}
         self._poe_cache = {}
+        self._version_cache = {}
         self._last_bulk_update = 0
         self._bulk_update_interval = bulk_update_interval
         
@@ -246,14 +247,15 @@ class ArubaSSHManager:
         async with self._cache_lock:
             try:
                 # Execute all commands in single session and parse the combined output
-                interfaces, statistics, link_details, poe_ports = await self.get_all_switch_data()
+                interfaces, statistics, link_details, poe_ports, version_info = await self.get_all_switch_data()
                 
-                if interfaces or statistics or link_details or poe_ports:
+                if interfaces or statistics or link_details or poe_ports or version_info:
                     # Update all caches with fresh data
                     self._interface_cache = interfaces
                     self._statistics_cache = statistics
                     self._link_cache = link_details
                     self._poe_cache = poe_ports
+                    self._version_cache = version_info
                     self._last_bulk_update = current_time
                     
                     # Mark as available and update successful connection time
@@ -265,7 +267,8 @@ class ArubaSSHManager:
                     
                     _LOGGER.info(f"Successfully refreshed all data for {self.host}: "
                                f"{len(interfaces)} interfaces, {len(statistics)} statistics, "
-                               f"{len(link_details)} link details, {len(poe_ports)} PoE ports")
+                               f"{len(link_details)} link details, {len(poe_ports)} PoE ports, "
+                               f"version info: {bool(version_info)}")
                     return True
                 else:
                     _LOGGER.warning(f"No data retrieved during refresh for {self.host}")
@@ -313,13 +316,14 @@ class ArubaSSHManager:
         """Force an immediate cache refresh, ignoring timeout intervals."""
         return await self.refresh_all_data()
 
-    async def get_all_switch_data(self) -> tuple[dict, dict, dict, dict]:
+    async def get_all_switch_data(self) -> tuple[dict, dict, dict, dict, dict]:
         """Execute all commands in a single SSH session and parse the combined output."""
         # Define all commands we need to execute
         commands = [
             "show interface all",
             "show interface brief", 
-            "show power-over-ethernet all"
+            "show power-over-ethernet all",
+            "show version"
         ]
         
         # Combine all commands into a single multi-line command
@@ -330,7 +334,7 @@ class ArubaSSHManager:
         
         if not result:
             _LOGGER.warning(f"Combined command execution failed for {self.host}")
-            return {}, {}, {}, {}
+            return {}, {}, {}, {}, {}
         
         _LOGGER.info(f"Successfully executed {len(commands)} commands in single session for {self.host}")
         _LOGGER.debug(f"Combined output length: {len(result)} characters")
@@ -338,12 +342,13 @@ class ArubaSSHManager:
         # Parse the combined output
         return self._parse_combined_output(result, commands)
     
-    def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict]:
+    def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict, dict]:
         """Parse the combined output from all commands."""
         interfaces = {}
         statistics = {}
         link_details = {}
         poe_ports = {}
+        version_info = {}
         
         # Split output by command boundaries - look for command echoes or patterns
         sections = self._split_output_by_commands(output, commands)
@@ -387,11 +392,15 @@ class ArubaSSHManager:
             elif "show power-over-ethernet all" in cmd:
                 # Parse PoE status
                 poe_ports.update(self._parse_poe_output(section_output))
+                
+            elif "show version" in cmd:
+                # Parse version and firmware information
+                version_info.update(self._parse_version_output(section_output))
         
         _LOGGER.debug(f"Parsed from combined output: {len(interfaces)} interfaces, {len(statistics)} statistics, "
-                     f"{len(link_details)} link details, {len(poe_ports)} PoE ports")
+                     f"{len(link_details)} link details, {len(poe_ports)} PoE ports, version info: {bool(version_info)}")
         
-        return interfaces, statistics, link_details, poe_ports
+        return interfaces, statistics, link_details, poe_ports, version_info
     
     def _split_output_by_commands(self, output: str, commands: list) -> dict:
         """Split the combined output into sections for each command."""
@@ -718,6 +727,61 @@ class ArubaSSHManager:
         
         return poe_ports
 
+    def _parse_version_output(self, output: str) -> dict:
+        """Parse 'show version' output for firmware and version information."""
+        version_info = {}
+        
+        for line in output.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            line_lower = line.lower()
+            
+            # Parse various version fields from HP/Aruba switches
+            if ":" in line:
+                parts = line.split(":", 1)
+                if len(parts) == 2:
+                    key = parts[0].strip().lower()
+                    value = parts[1].strip()
+                    
+                    # Map common version fields
+                    if any(x in key for x in ["software revision", "firmware revision", "version", "release"]):
+                        version_info["firmware_version"] = value
+                    elif any(x in key for x in ["rom version", "boot rom", "bootrom"]):
+                        version_info["boot_version"] = value  
+                    elif any(x in key for x in ["model", "product", "type"]):
+                        version_info["model"] = value
+                    elif any(x in key for x in ["serial", "serial number"]):
+                        version_info["serial_number"] = value
+                    elif any(x in key for x in ["mac address", "base mac"]):
+                        version_info["mac_address"] = value
+                    elif any(x in key for x in ["hardware", "hw rev"]):
+                        version_info["hardware_revision"] = value
+                    elif any(x in key for x in ["uptime", "system uptime"]):
+                        version_info["uptime"] = value
+                        
+            # Also look for patterns without colons
+            elif any(x in line_lower for x in ["version", "revision", "firmware"]):
+                # Handle version lines that don't follow key:value format
+                if "ya." in line_lower or "kb." in line_lower or "yc." in line_lower:
+                    # Aruba version format like "YA.16.08.0002"
+                    import re
+                    version_match = re.search(r'[YK][A-Z]\.[\d.]+', line, re.IGNORECASE)
+                    if version_match and "firmware_version" not in version_info:
+                        version_info["firmware_version"] = version_match.group()
+        
+        # Set defaults for missing fields
+        if "firmware_version" not in version_info:
+            version_info["firmware_version"] = "Unknown"
+        if "model" not in version_info:
+            version_info["model"] = "HP/Aruba Switch"
+        if "serial_number" not in version_info:
+            version_info["serial_number"] = "Unknown"
+            
+        _LOGGER.debug(f"Parsed version info: {version_info}")
+        return version_info
+
     async def update_bulk_cache(self) -> bool:
         """Update the bulk cache with fresh data from the switch using single session."""
         import time
@@ -730,18 +794,19 @@ class ArubaSSHManager:
             
             try:
                 # Execute all commands in a single session
-                interfaces, statistics, link_details, poe_ports = await self.get_all_switch_data()
+                interfaces, statistics, link_details, poe_ports, version_info = await self.get_all_switch_data()
                 
                 # Update all caches
                 self._interface_cache = interfaces
                 self._statistics_cache = statistics  
                 self._link_cache = link_details
                 self._poe_cache = poe_ports
+                self._version_cache = version_info
                 
                 self._last_bulk_update = current_time
                 _LOGGER.debug(f"Updated bulk cache via single session: {len(interfaces)} interfaces, "
                             f"{len(statistics)} statistics, {len(link_details)} link details, "
-                            f"{len(poe_ports)} PoE ports")
+                            f"{len(poe_ports)} PoE ports, version info: {bool(version_info)}")
                 return True
                 
             except Exception as e:
@@ -835,6 +900,21 @@ class ArubaSSHManager:
             _LOGGER.debug(f"Link cache contains {len(self._link_cache)} ports: {list(self._link_cache.keys())}")
             
             return cached_link
+
+    async def get_version_info(self) -> dict:
+        """Get cached version information for the switch. Returns None if switch is unavailable."""
+        await self.update_bulk_cache()
+        
+        async with self._cache_lock:
+            # Return None if switch is not available
+            if not self._is_available:
+                return None
+            
+            # Return version info or empty dict if not available
+            version_info = self._version_cache.copy() if self._version_cache else {}
+            _LOGGER.debug(f"Retrieved cached version info: {version_info}")
+            
+            return version_info
 
 # Global connection managers
 _connection_managers: Dict[str, ArubaSSHManager] = {}
