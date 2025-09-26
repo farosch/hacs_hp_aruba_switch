@@ -83,10 +83,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Set up switch platform
     _LOGGER.info("🔌 Setting up switch platform for %s", entry.data["host"]) 
     await hass.config_entries.async_forward_entry_setups(entry, ["switch", "sensor", "binary_sensor"])
-    _LOGGER.info("✅ Switch platform setup completed for %s", entry.data["host"])
-    
-    # TEMPORARY: Debug setup hanging - disable sensors
-    _LOGGER.warning("⚠️  TEMP DEBUG: Sensors disabled to test setup completion")
+    _LOGGER.info("✅ All platforms setup completed for %s", entry.data["host"])
     
     # Add update listener for options flow
     _LOGGER.info("👂 Adding update listener for %s", entry.data["host"])
