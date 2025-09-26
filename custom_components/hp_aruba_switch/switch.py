@@ -91,12 +91,15 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self):
         """Return true if switch is on."""
+        _LOGGER.debug(f"🔍 is_on property called for {self._attr_name}: {self._is_on}")
         return self._is_on
 
     @property
     def available(self):
         """Return if entity is available."""
-        return self.coordinator.last_update_success
+        available = self.coordinator.last_update_success and getattr(self, '_attr_available', True)
+        _LOGGER.debug(f"🔍 available property called for {self._attr_name}: {available}")
+        return available
 
     @property
     def extra_state_attributes(self):
@@ -153,20 +156,33 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
 
     def _handle_coordinator_update(self):
         """Handle updated data from the coordinator."""
+        _LOGGER.debug(f"🔄 Switch entity update called for {self._attr_name}")
+        
         if not self.coordinator.last_update_success:
+            _LOGGER.debug(f"❌ Coordinator update failed for {self._attr_name}")
+            return
+        
+        if not self._coordinator.data:
+            _LOGGER.debug(f"❌ No coordinator data for {self._attr_name}")
             return
             
         try:
-            # Get data from coordinator's data - NO SSH CALLS HERE
-            if not self._coordinator.data or not self._coordinator.data.get("available", False):
+            # Check if data is available
+            if not self._coordinator.data.get("available", False):
+                _LOGGER.debug(f"❌ Data not available for {self._attr_name}")
                 self._attr_available = False
                 return
+            
+            _LOGGER.debug(f"📊 Processing coordinator data for {self._attr_name}")
+            _LOGGER.debug(f"📊 Coordinator data keys: {list(self._coordinator.data.keys())}")
                 
             # Read from the live data that coordinator fetched
             interfaces = self._coordinator.data.get("interfaces", {})
             statistics = self._coordinator.data.get("statistics", {})
             link_details = self._coordinator.data.get("link_details", {})
             poe_ports = self._coordinator.data.get("poe_ports", {})
+            
+            _LOGGER.debug(f"📊 Available data - interfaces: {len(interfaces)}, stats: {len(statistics)}, links: {len(link_details)}, poe: {len(poe_ports)}")
             
             status = interfaces.get(self._port, {})
             port_statistics = statistics.get(self._port, {})  
@@ -183,17 +199,17 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
             if self._is_poe:
                 # Parse PoE status from cached data
                 power_enable = status.get("power_enable", False)
-                poe_status = status.get("poe_status", "off")
+                poe_status_value = status.get("poe_status", "off")
                 
                 # PoE is considered "on" if power is enabled and status indicates active power delivery
                 poe_active = False
-                if power_enable and isinstance(poe_status, str):
-                    poe_active = poe_status.lower() in ["delivering", "searching", "on", "enabled"]
-                elif power_enable and isinstance(poe_status, bool):
-                    poe_active = poe_status  # Legacy boolean support
+                if power_enable and isinstance(poe_status_value, str):
+                    poe_active = poe_status_value.lower() in ["delivering", "searching", "on", "enabled"]
+                elif power_enable and isinstance(poe_status_value, bool):
+                    poe_active = poe_status_value  # Legacy boolean support
                 
                 self._is_on = poe_active
-                _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status}, final_state={self._is_on}")
+                _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status_value}, final_state={self._is_on}")
             else:
                 # Parse interface status from cached data
                 port_enabled = status.get("port_enabled", False)
@@ -228,6 +244,15 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
                     "port_enabled": status.get("port_enabled", False),
                     "admin_status": "enabled" if status.get("port_enabled", False) else "disabled"
                 })
+            
+            # Mark entity as available
+            self._attr_available = True
+            _LOGGER.debug(f"✅ Successfully updated {self._attr_name} - is_on: {self._is_on}")
+            
+            # Notify Home Assistant of state change
+            self.async_write_ha_state()
                 
         except Exception as e:
             _LOGGER.warning(f"Failed to update {self._attr_name} from coordinator: {e}")
+            import traceback
+            _LOGGER.debug(f"Full traceback: {traceback.format_exc()}")

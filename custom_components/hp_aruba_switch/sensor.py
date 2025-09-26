@@ -54,9 +54,9 @@ class ArubaPortLinkStatusSensor(CoordinatorEntity, SensorEntity):
         if not self.coordinator.data or not self.coordinator.data.get("available"):
             return "unknown"
             
-        # Get port data from coordinator live data
-        interfaces = self.coordinator.data.get("interfaces", {})
-        port_data = interfaces.get(str(self._port), {})
+        # Get port link data from coordinator live data (link status is in link_details, not interfaces)
+        link_details = self.coordinator.data.get("link_details", {})
+        port_data = link_details.get(str(self._port), {})
         if port_data:
             return "up" if port_data.get("link_up", False) else "down"
         return "unknown"
@@ -85,13 +85,13 @@ class ArubaPortActivitySensor(CoordinatorEntity, SensorEntity):
         if not self.coordinator.data or not self.coordinator.data.get("available"):
             return "unknown"
             
-        # Get port statistics from coordinator live data
+        # Get port statistics from coordinator live data (correct keys are bytes_rx/bytes_tx)
         statistics = self.coordinator.data.get("statistics", {})
         port_stats = statistics.get(str(self._port), {})
         if port_stats:
-            bytes_in = port_stats.get("bytes_in", 0)
-            bytes_out = port_stats.get("bytes_out", 0)
-            total_bytes = bytes_in + bytes_out
+            bytes_rx = port_stats.get("bytes_rx", 0)
+            bytes_tx = port_stats.get("bytes_tx", 0)
+            total_bytes = bytes_rx + bytes_tx
             
             if total_bytes > 1000:  # More than 1KB indicates activity
                 return "active"
