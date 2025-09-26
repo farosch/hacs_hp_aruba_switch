@@ -1,6 +1,8 @@
 # Release Notes
 
-## Version 1.0.7 - Comprehensive Monitorin### 🔌 **Offline Handling & Reliability** 🆕
+## Version 1.0.7 - Comprehensive Monitoring
+
+### 🔌 **Offline Handling & Reliability** 🆕
 
 #### **Comprehensive Offline Detection**
 - Automatic detection when switch becomes unreachable
@@ -33,10 +35,30 @@
 - Improved interface header detection to prevent parsing conflicts
 - All ports now correctly display their administrative enable/disable state
 
-#### **Optimized SSH Operations** 
-- Single SSH session for all commands instead of multiple connections
-- Combined command execution with intelligent output parsing
-- Reduced connection overhead and improved reliability
+#### **Single SSH Session Architecture** 🚀
+**MAJOR ARCHITECTURAL IMPROVEMENT**: Completely redesigned to use proper coordinator pattern eliminating concurrent SSH connection issues.
+
+**Before (Problematic):**
+- 56 individual entities each making separate SSH calls during setup
+- Multiple simultaneous SSH sessions overwhelming the switch
+- Setup timeouts and `CancelledError` exceptions
+- Poor performance and reliability issues
+
+**After (Proper Architecture):**
+- **Single coordinator** manages ONE SSH session for entire integration
+- Uses Home Assistant's `DataUpdateCoordinator` pattern with `CoordinatorEntity`
+- Executes 4 SSH commands every 30 seconds to collect data for ALL ports
+- All entities read from shared cache - **zero individual SSH calls**
+- Maximum 1 concurrent SSH connection at any time
+
+**Performance Benefits:**
+- ⚡ Faster setup (seconds instead of timeouts)
+- 🔒 Switch protection (no overwhelming with connections)  
+- 📊 Efficient bulk data collection for all 50+ entities
+- 🛡️ Eliminates race conditions and connection conflicts
+- Control commands (turn_on/off) properly use coordinator's SSH manager
+
+**This resolves setup timeout issues and provides the reliable, single-session architecture users expect.**
 
 #### **Enhanced HP/Aruba Compatibility**
 - Better parsing of comma-separated statistics

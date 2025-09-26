@@ -48,6 +48,19 @@ This integration works with HP/Aruba switches that support SSH access, including
 - Valid administrator credentials
 - Network connectivity between Home Assistant and the switch
 
+## Architecture & Performance
+
+The integration uses a **single SSH session** architecture for optimal performance:
+
+- **Centralized Coordinator**: One coordinator manages all switch communication
+- **Bulk Data Collection**: Every 30 seconds, executes 4 SSH commands to collect data for ALL ports
+- **Efficient Caching**: All entities read from shared cache - no individual SSH calls
+- **Switch Protection**: Maximum 1 concurrent SSH session prevents switch overload
+- **Staggered Updates**: Entities update at different intervals to spread load
+- **Smart Recovery**: Automatic reconnection and offline detection
+
+This design ensures reliable operation even with 50+ entities without overwhelming the switch or network.
+
 ## Installation
 
 ### HACS (Recommended)
