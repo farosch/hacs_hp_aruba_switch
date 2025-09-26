@@ -210,22 +210,34 @@ class ArubaSSHManager:
                     # Update availability on successful command execution
                     if result is not None:
                         async with self._cache_lock:
+                            was_offline = not self._is_available
                             self._is_available = True
                             self._last_successful_connection = time.time()
+                            if was_offline:
+                                _LOGGER.info(f"Switch {self.host} is back online")
                     else:
                         async with self._cache_lock:
+                            was_online = self._is_available
                             self._is_available = False
+                            if was_online:
+                                _LOGGER.warning(f"Switch {self.host} went offline (command returned no data)")
                             
                     return result
                 except asyncio.TimeoutError:
                     _LOGGER.debug(f"SSH command '{command}' timed out for {self.host}")
                     async with self._cache_lock:
+                        was_online = self._is_available
                         self._is_available = False
+                        if was_online:
+                            _LOGGER.warning(f"Switch {self.host} went offline (timeout)")
                     return None
                 except Exception as e:
                     _LOGGER.debug(f"SSH command '{command}' failed for {self.host}: {e}")
                     async with self._cache_lock:
+                        was_online = self._is_available
                         self._is_available = False
+                        if was_online:
+                            _LOGGER.warning(f"Switch {self.host} went offline (connection error: {e})")
                     return None
 
         """Refresh all switch data using single SSH session and update cache."""
@@ -245,8 +257,11 @@ class ArubaSSHManager:
                     self._last_bulk_update = current_time
                     
                     # Mark as available and update successful connection time
+                    was_offline = not self._is_available
                     self._is_available = True
                     self._last_successful_connection = current_time
+                    if was_offline:
+                        _LOGGER.info(f"Switch {self.host} is back online (bulk refresh successful)")
                     
                     _LOGGER.info(f"Successfully refreshed all data for {self.host}: "
                                f"{len(interfaces)} interfaces, {len(statistics)} statistics, "
@@ -255,13 +270,19 @@ class ArubaSSHManager:
                 else:
                     _LOGGER.warning(f"No data retrieved during refresh for {self.host}")
                     # Mark as unavailable when no data can be retrieved
+                    was_online = self._is_available
                     self._is_available = False
+                    if was_online:
+                        _LOGGER.warning(f"Switch {self.host} went offline (no data in refresh)")
                     return False
                     
             except Exception as e:
                 _LOGGER.error(f"Failed to refresh switch data for {self.host}: {e}")
                 # Mark as unavailable on connection failures
+                was_online = self._is_available
                 self._is_available = False
+                if was_online:
+                    _LOGGER.warning(f"Switch {self.host} went offline (refresh error: {e})")
                 return False
 
 
@@ -737,6 +758,25 @@ class ArubaSSHManager:
         """Check if the switch is currently available (connected)."""
         async with self._cache_lock:
             return self._is_available
+    
+    async def test_connectivity(self) -> bool:
+        """Test switch connectivity by executing a simple command. Updates availability status."""
+        try:
+            result = await self.execute_command("show version", timeout=5)
+            success = result is not None and len(result.strip()) > 0
+            
+            async with self._cache_lock:
+                self._is_available = success
+                if success:
+                    self._last_successful_connection = time.time()
+            
+            _LOGGER.info(f"Connectivity test for {self.host}: {'SUCCESS' if success else 'FAILED'}")
+            return success
+        except Exception as e:
+            _LOGGER.warning(f"Connectivity test failed for {self.host}: {e}")
+            async with self._cache_lock:
+                self._is_available = False
+            return False
     
     async def get_port_status(self, port: str, is_poe: bool = False) -> dict:
         """Get cached status for a specific port. Returns None if switch is unavailable."""
