@@ -456,24 +456,24 @@ class ArubaSSHManager:
                 line_lower = line.lower()
                 
                 # Parse port status, link details, and statistics using existing logic
-                # Smart parsing logic: handle any whitespace variation for "Port Enabled"
+                # Bulletproof parsing: use simple string matching with whitespace normalization
                 import re
                 
                 # Debug: Log every line that contains "enabled" to see what we're working with
                 if "enabled" in line_lower:
                     _LOGGER.debug(f"Port {current_interface}: DEBUG - Line contains 'enabled': '{line}' (repr: {repr(line)})")
                 
-                # Match "Port Enabled" with any amount of whitespace, followed by colon
-                port_enabled_match = re.match(r'\s*port\s+enabled\s*:', line_lower)
-                if port_enabled_match and ":" in line:
+                # Normalize whitespace and check for "port enabled :" pattern
+                normalized_line = re.sub(r'\s+', ' ', line_lower.strip())
+                if normalized_line.startswith('port enabled :') or 'port enabled :' in normalized_line:
                     value_part = line.split(":", 1)[1].strip().lower()
                     is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
                     interfaces[current_interface]["port_enabled"] = is_enabled
                     link_details[current_interface]["port_enabled"] = is_enabled
                     _LOGGER.debug(f"Port {current_interface}: Found 'Port Enabled' line: '{line}' -> value_part: '{value_part}' -> is_enabled: {is_enabled}")
                 
-                # Smart parsing logic: handle any whitespace variation for "Link Status"
-                elif re.match(r'\s*link\s+status\s*:', line_lower) and ":" in line:
+                # Bulletproof parsing: use simple string matching with whitespace normalization for Link Status  
+                elif normalized_line.startswith('link status :') or 'link status :' in normalized_line:
                     value_part = line.split(":", 1)[1].strip().lower()
                     link_up = "up" in value_part
                     interfaces[current_interface]["link_status"] = "up" if link_up else "down"
