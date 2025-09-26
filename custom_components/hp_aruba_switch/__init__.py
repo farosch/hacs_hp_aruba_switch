@@ -74,7 +74,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Fetch initial data with timeout
     _LOGGER.info("📊 Fetching initial data for %s", entry.data["host"])
     try:
-        await asyncio.wait_for(coordinator.async_config_entry_first_refresh(), timeout=60.0)
+        await asyncio.wait_for(coordinator.async_config_entry_first_refresh(), timeout=40.0)
         _LOGGER.info("✅ Initial data fetch completed for %s", entry.data["host"])
     except asyncio.TimeoutError:
         _LOGGER.error("❌ Initial data fetch timed out after 60 seconds for %s", entry.data["host"])

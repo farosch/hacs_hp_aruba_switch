@@ -265,14 +265,27 @@ class ArubaSSHManager:
         _LOGGER.info(f"✅ Successfully executed {len(commands)} commands in single session for {self.host}")
         _LOGGER.debug(f"📊 Combined output length: {len(result)} characters")
         
-        # Parse the combined output
+        # Parse the combined output with timeout
         _LOGGER.debug(f"🔍 Starting to parse combined output for {self.host}")
-        parsed_result = self._parse_combined_output(result, commands)
-        _LOGGER.debug(f"✅ Parsing completed for {self.host}")
-        return parsed_result
+        try:
+            # Run parsing in executor with timeout to prevent hanging
+            loop = asyncio.get_event_loop()
+            parsed_result = await asyncio.wait_for(
+                loop.run_in_executor(None, self._parse_combined_output, result, commands),
+                timeout=15.0  # 15 second timeout for parsing
+            )
+            _LOGGER.debug(f"✅ Parsing completed for {self.host}")
+            return parsed_result
+        except asyncio.TimeoutError:
+            _LOGGER.error(f"❌ Parsing timed out after 15s for {self.host}")
+            return {}, {}, {}, {}, {}
+        except Exception as e:
+            _LOGGER.error(f"❌ Parsing failed for {self.host}: {e}")
+            return {}, {}, {}, {}, {}
     
     def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict, dict]:
         """Parse the combined output from all commands."""
+        _LOGGER.debug(f"🔍 _parse_combined_output starting, output length: {len(output)}")
         interfaces = {}
         statistics = {}
         link_details = {}
@@ -280,21 +293,27 @@ class ArubaSSHManager:
         version_info = {}
         
         # Split output by command boundaries - look for command echoes or patterns
+        _LOGGER.debug(f"🔪 Starting output splitting")
         sections = self._split_output_by_commands(output, commands)
+        _LOGGER.debug(f"✂️ Output splitting completed, got {len(sections)} sections")
         
         for i, (cmd, section_output) in enumerate(sections.items()):
-            _LOGGER.debug(f"Processing section for command '{cmd}' (length: {len(section_output)})")
+            _LOGGER.debug(f"🔄 Processing section {i+1}/{len(sections)} for command '{cmd}' (length: {len(section_output)})")
             
             if "show interface all" in cmd:
                 # Parse interface status and statistics
+                _LOGGER.debug(f"📊 Starting interface all parsing")
                 ifaces, stats, links = self._parse_interface_all_output(section_output)
+                _LOGGER.debug(f"📈 Interface all completed: {len(ifaces)} interfaces, {len(stats)} stats, {len(links)} links")
                 interfaces.update(ifaces)
                 statistics.update(stats)
                 link_details.update(links)
                 
             elif "show interface brief" in cmd:
                 # Parse brief interface info
+                _LOGGER.debug(f"📋 Starting interface brief parsing")
                 brief_info = self._parse_interface_brief_output(section_output)
+                _LOGGER.debug(f"📑 Interface brief completed: {len(brief_info)} interfaces")
                 # Merge brief info into link_details (only speed/duplex info)
                 for port, info in brief_info.items():
                     if port in link_details:
@@ -320,11 +339,17 @@ class ArubaSSHManager:
                         
             elif "show power-over-ethernet all" in cmd:
                 # Parse PoE status
-                poe_ports.update(self._parse_poe_output(section_output))
+                _LOGGER.debug(f"⚡ Starting PoE parsing")
+                poe_data = self._parse_poe_output(section_output)
+                _LOGGER.debug(f"🔌 PoE completed: {len(poe_data)} ports")
+                poe_ports.update(poe_data)
                 
             elif "show version" in cmd:
                 # Parse version and firmware information
-                version_info.update(self._parse_version_output(section_output))
+                _LOGGER.debug(f"📟 Starting version parsing")
+                version_data = self._parse_version_output(section_output)
+                _LOGGER.debug(f"📝 Version completed: {bool(version_data)}")
+                version_info.update(version_data)
         
         _LOGGER.debug(f"Parsed from combined output: {len(interfaces)} interfaces, {len(statistics)} statistics, "
                      f"{len(link_details)} link details, {len(poe_ports)} PoE ports, version info: {bool(version_info)}")
@@ -773,7 +798,7 @@ class ArubaSSHManager:
                 self._last_bulk_update = 0  # Reset timestamp to force refresh
             
             _LOGGER.debug(f"🔄 Starting force cache refresh for {self.host}")
-            result = await asyncio.wait_for(self.refresh_bulk_cache(), timeout=45.0)
+            result = await asyncio.wait_for(self.refresh_bulk_cache(), timeout=30.0)
             _LOGGER.debug(f"✅ Force cache refresh completed for {self.host}: {result}")
             return result
         except asyncio.TimeoutError:
