@@ -59,26 +59,32 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Aruba Switch from a config entry."""
+    _LOGGER.info("🚀 Starting Aruba Switch setup for %s", entry.data["host"])
+    
     # Create and store the coordinator
+    _LOGGER.info("📡 Creating coordinator for %s", entry.data["host"])
     coordinator = ArubaSwitchCoordinator(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = coordinator
     
     # Fetch initial data
+    _LOGGER.info("📊 Fetching initial data for %s", entry.data["host"])
     await coordinator.async_config_entry_first_refresh()
+    _LOGGER.info("✅ Initial data fetch completed for %s", entry.data["host"])
 
     # Set up switch platform
+    _LOGGER.info("🔌 Setting up switch platform for %s", entry.data["host"]) 
     await hass.config_entries.async_forward_entry_setups(entry, ["switch"])
+    _LOGGER.info("✅ Switch platform setup completed for %s", entry.data["host"])
     
-    # Add a small delay before setting up sensors to allow switch initialization
-    import asyncio
-    await asyncio.sleep(2)
-    
-    # Then set up sensor and binary_sensor platforms
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "binary_sensor"])
+    # TEMPORARY: Debug setup hanging - disable sensors
+    _LOGGER.warning("⚠️  TEMP DEBUG: Sensors disabled to test setup completion")
     
     # Add update listener for options flow
+    _LOGGER.info("👂 Adding update listener for %s", entry.data["host"])
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    _LOGGER.info("✅ Update listener added for %s", entry.data["host"])
     
+    _LOGGER.info("🎉 Aruba Switch setup COMPLETED successfully for %s", entry.data["host"])
     return True
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -88,8 +94,8 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    # Unload switch, sensor, and binary_sensor platforms
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["switch", "sensor", "binary_sensor"])
+    # Only unload switch platform for now (sensors temporarily disabled)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["switch"])
     
     if unload_ok:
         # Remove the config entry from hass.data
