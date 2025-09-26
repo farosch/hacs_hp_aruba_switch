@@ -108,6 +108,11 @@ For each port (e.g., port 1):
 - `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_connectivity` - Switch online/offline status
 - `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1_link` - Port link status (for each port)
 
+### Device Information Sensors
+- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_firmware_version` - Switch firmware version
+- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_model` - Switch model information
+- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_serial_number` - Switch serial number
+
 All entities are automatically created and registered in Home Assistant with proper device information.
 
 ## 🔧 **Configuration Options**

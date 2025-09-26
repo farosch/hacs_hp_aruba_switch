@@ -79,6 +79,13 @@
 - Detailed attributes including last successful connection time
 - Essential for network monitoring and alerting
 
+#### **Version & Firmware Sensors** 🆕
+- Switch firmware version sensor with complete version information
+- Switch model sensor for hardware identification  
+- Switch serial number sensor for asset management
+- Automatic parsing of HP/Aruba version output formats
+- Rich attributes with boot version, MAC address, and hardware details
+
 ### ⚙️ **Configuration Enhancements**
 
 #### **Options Flow Support**
