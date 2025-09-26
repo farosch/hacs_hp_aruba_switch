@@ -50,5 +50,5 @@ class ArubaSwitchConnectivitySensor(CoordinatorEntity, BinarySensorEntity):
         """Return the state attributes."""
         return {
             "host": self.coordinator.host,
-            "last_update": self.coordinator.last_update,
+            "last_update": self.coordinator.last_update_success_time,
         }

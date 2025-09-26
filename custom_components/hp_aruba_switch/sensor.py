@@ -102,16 +102,17 @@ class ArubaPortActivitySensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
             return {}
             
-        port_data = self.coordinator.ssh_manager.get_port_status(self._port)
-        if port_data:
+        statistics = self.coordinator.data.get("statistics", {})
+        port_stats = statistics.get(self._port, {})
+        if port_stats:
             return {
-                "bytes_rx": port_data.get("bytes_rx", 0),
-                "bytes_tx": port_data.get("bytes_tx", 0),
-                "packets_rx": port_data.get("unicast_rx", 0),
-                "packets_tx": port_data.get("unicast_tx", 0),
+                "bytes_rx": port_stats.get("bytes_rx", 0),
+                "bytes_tx": port_stats.get("bytes_tx", 0),
+                "packets_rx": port_stats.get("unicast_rx", 0),
+                "packets_tx": port_stats.get("unicast_tx", 0),
             }
         return {}
         
