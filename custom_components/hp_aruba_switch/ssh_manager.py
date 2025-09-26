@@ -241,80 +241,6 @@ class ArubaSSHManager:
                             _LOGGER.warning(f"Switch {self.host} went offline (connection error: {e})")
                     return None
 
-        """Refresh all switch data using single SSH session and update cache."""
-        current_time = time.time()
-        
-        async with self._cache_lock:
-            try:
-                # Execute all commands in single session and parse the combined output
-                interfaces, statistics, link_details, poe_ports, version_info = await self.get_all_switch_data()
-                
-                if interfaces or statistics or link_details or poe_ports or version_info:
-                    # Update all caches with fresh data
-                    self._interface_cache = interfaces
-                    self._statistics_cache = statistics
-                    self._link_cache = link_details
-                    self._poe_cache = poe_ports
-                    self._version_cache = version_info
-                    self._last_bulk_update = current_time
-                    
-                    # Mark as available and update successful connection time
-                    was_offline = not self._is_available
-                    self._is_available = True
-                    self._last_successful_connection = current_time
-                    if was_offline:
-                        _LOGGER.info(f"Switch {self.host} is back online (bulk refresh successful)")
-                    
-                    _LOGGER.info(f"Successfully refreshed all data for {self.host}: "
-                               f"{len(interfaces)} interfaces, {len(statistics)} statistics, "
-                               f"{len(link_details)} link details, {len(poe_ports)} PoE ports, "
-                               f"version info: {bool(version_info)}")
-                    return True
-                else:
-                    _LOGGER.warning(f"No data retrieved during refresh for {self.host}")
-                    # Mark as unavailable when no data can be retrieved
-                    was_online = self._is_available
-                    self._is_available = False
-                    if was_online:
-                        _LOGGER.warning(f"Switch {self.host} went offline (no data in refresh)")
-                    return False
-                    
-            except Exception as e:
-                _LOGGER.error(f"Failed to refresh switch data for {self.host}: {e}")
-                # Mark as unavailable on connection failures
-                was_online = self._is_available
-                self._is_available = False
-                if was_online:
-                    _LOGGER.warning(f"Switch {self.host} went offline (refresh error: {e})")
-                return False
-
-
-        """Update the bulk cache with fresh data from the switch."""
-        current_time = time.time()
-        
-        # Check if switch should be considered offline due to timeout
-        # Mark as offline if no successful connection for more than 3 update intervals
-        max_offline_time = self._bulk_update_interval * 3
-        if (self._last_successful_connection > 0 and 
-            current_time - self._last_successful_connection > max_offline_time):
-            async with self._cache_lock:
-                if self._is_available:
-                    _LOGGER.warning(f"Switch {self.host} marked as offline due to timeout "
-                                  f"(no successful connection for {max_offline_time} seconds)")
-                    self._is_available = False
-        
-        # Only update if enough time has passed or cache is empty
-        if (current_time - self._last_bulk_update < self._bulk_update_interval and 
-            self._interface_cache and self._statistics_cache):
-            _LOGGER.debug(f"Cache still fresh for {self.host}, skipping update")
-            return True
-            
-        # Refresh all data
-        return await self.refresh_all_data()
-
-    async def force_cache_refresh(self) -> bool:
-        """Force an immediate cache refresh, ignoring timeout intervals."""
-        return await self.refresh_all_data()
 
     async def get_all_switch_data(self) -> tuple[dict, dict, dict, dict, dict]:
         """Execute all commands in a single SSH session and parse the combined output."""
@@ -782,7 +708,7 @@ class ArubaSSHManager:
         _LOGGER.debug(f"Parsed version info: {version_info}")
         return version_info
 
-    async def update_bulk_cache(self) -> bool:
+    async def refresh_bulk_cache(self) -> bool:
         """Update the bulk cache with fresh data from the switch using single session."""
         import time
         current_time = time.time()
@@ -796,28 +722,49 @@ class ArubaSSHManager:
                 # Execute all commands in a single session
                 interfaces, statistics, link_details, poe_ports, version_info = await self.get_all_switch_data()
                 
-                # Update all caches
-                self._interface_cache = interfaces
-                self._statistics_cache = statistics  
-                self._link_cache = link_details
-                self._poe_cache = poe_ports
-                self._version_cache = version_info
-                
-                self._last_bulk_update = current_time
-                _LOGGER.debug(f"Updated bulk cache via single session: {len(interfaces)} interfaces, "
-                            f"{len(statistics)} statistics, {len(link_details)} link details, "
-                            f"{len(poe_ports)} PoE ports, version info: {bool(version_info)}")
-                return True
+                if interfaces or statistics or link_details or poe_ports or version_info:
+                    # Update all caches with fresh data
+                    self._interface_cache = interfaces
+                    self._statistics_cache = statistics  
+                    self._link_cache = link_details
+                    self._poe_cache = poe_ports
+                    self._version_cache = version_info
+                    self._last_bulk_update = current_time
+                    
+                    # Mark as available and update successful connection time
+                    was_offline = not self._is_available
+                    self._is_available = True
+                    self._last_successful_connection = current_time
+                    if was_offline:
+                        _LOGGER.info(f"Switch {self.host} is back online (bulk refresh successful)")
+                    
+                    _LOGGER.debug(f"Updated bulk cache via single session: {len(interfaces)} interfaces, "
+                                f"{len(statistics)} statistics, {len(link_details)} link details, "
+                                f"{len(poe_ports)} PoE ports, version info: {bool(version_info)}")
+                    return True
+                else:
+                    _LOGGER.warning(f"No data retrieved during refresh for {self.host}")
+                    # Mark as unavailable when no data can be retrieved
+                    was_online = self._is_available
+                    self._is_available = False
+                    if was_online:
+                        _LOGGER.warning(f"Switch {self.host} went offline (no data in refresh)")
+                    return False
                 
             except Exception as e:
                 _LOGGER.error(f"Failed to update bulk cache for {self.host}: {e}")
+                # Mark as unavailable on connection failures
+                was_online = self._is_available
+                self._is_available = False
+                if was_online:
+                    _LOGGER.warning(f"Switch {self.host} went offline (refresh error: {e})")
                 return False
 
     async def force_cache_refresh(self) -> bool:
         """Force an immediate cache refresh, ignoring timeout intervals."""
         async with self._cache_lock:
             self._last_bulk_update = 0  # Reset timestamp to force refresh
-        return await self.update_bulk_cache()
+        return await self.refresh_bulk_cache()
 
     async def is_switch_available(self) -> bool:
         """Check if the switch is currently available (connected)."""
@@ -845,7 +792,7 @@ class ArubaSSHManager:
     
     async def get_port_status(self, port: str, is_poe: bool = False) -> dict:
         """Get cached status for a specific port. Returns None if switch is unavailable."""
-        await self.update_bulk_cache()
+        await self.refresh_bulk_cache()
         
         async with self._cache_lock:
             # Return None if switch is not available - this signals entities to become unavailable
@@ -859,7 +806,7 @@ class ArubaSSHManager:
 
     async def get_port_statistics(self, port: str) -> dict:
         """Get cached traffic statistics for a specific port. Returns None if switch is unavailable."""
-        await self.update_bulk_cache()
+        await self.refresh_bulk_cache()
         
         async with self._cache_lock:
             # Return None if switch is not available
@@ -880,7 +827,7 @@ class ArubaSSHManager:
 
     async def get_port_link_status(self, port: str) -> dict:
         """Get cached detailed link status information for a specific port. Returns None if switch is unavailable."""
-        await self.update_bulk_cache()
+        await self.refresh_bulk_cache()
         
         async with self._cache_lock:
             # Return None if switch is not available
@@ -903,7 +850,7 @@ class ArubaSSHManager:
 
     async def get_version_info(self) -> dict:
         """Get cached version information for the switch. Returns None if switch is unavailable."""
-        await self.update_bulk_cache()
+        await self.refresh_bulk_cache()
         
         async with self._cache_lock:
             # Return None if switch is not available
