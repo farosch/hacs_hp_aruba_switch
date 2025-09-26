@@ -25,6 +25,12 @@ A Home Assistant custom integration that provides control over HP/Aruba switch p
 - Configurable update intervals
 - Error handling and automatic retry logic
 
+### 🔄 **Reliability & Monitoring**
+- Automatic offline detection with entity unavailability
+- Switch connectivity status sensor
+- Smart recovery when switch comes back online
+- Clear logging for troubleshooting network issues
+
 ## Supported Devices
 
 This integration works with HP/Aruba switches that support SSH access, including:
@@ -97,6 +103,10 @@ After successful configuration, the integration creates the following entities:
 For each port (e.g., port 1):
 - `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port control
 - `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_poe_1` - PoE control
+
+### Monitoring Entities
+- `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_connectivity` - Switch online/offline status
+- `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1_link` - Port link status (for each port)
 
 All entities are automatically created and registered in Home Assistant with proper device information.
 
