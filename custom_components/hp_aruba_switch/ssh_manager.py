@@ -337,6 +337,7 @@ class ArubaSSHManager:
             elif "show version" in cmd:
                 # Parse version and firmware information
                 _LOGGER.debug(f"📟 Starting version parsing")
+                _LOGGER.debug(f"🔍 RAW VERSION OUTPUT: {repr(section_output)}")
                 version_data = self._parse_version_output(section_output)
                 _LOGGER.debug(f"📝 Version completed: {bool(version_data)}")
                 version_info.update(version_data)
@@ -689,6 +690,8 @@ class ArubaSSHManager:
         main_firmware_version = None
         boot_version = None
         
+        _LOGGER.debug(f"🔍 VERSION PARSING: Processing {len(output)} characters of version output")
+        
         for line in output.split('\n'):
             line = line.strip()
             if not line:
@@ -702,6 +705,7 @@ class ArubaSSHManager:
                 model_match = re.search(r'(HP-[A-Z0-9-]+)', line, re.IGNORECASE)
                 if model_match:
                     version_info["model"] = model_match.group(1)
+                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found model in prompt: {model_match.group(1)} from line: {line}")
             
             # Parse various version fields from HP/Aruba switches
             if ":" in line:
@@ -715,6 +719,7 @@ class ArubaSSHManager:
                         version_info["firmware_version"] = value
                     elif any(x in key for x in ["rom version", "boot rom", "bootrom"]):
                         boot_version = value  # Store but don't use as primary
+                        _LOGGER.debug(f"🔧 VERSION PARSING: Found boot ROM version: {value} from key: {key}")
                     elif any(x in key for x in ["model", "product", "type"]):
                         if "model" not in version_info:  # Don't override hostname-extracted model
                             version_info["model"] = value
@@ -736,27 +741,34 @@ class ArubaSSHManager:
                     version_match = re.search(r'[YK][A-Z]\.[\.\d]+', line, re.IGNORECASE)
                     if version_match:
                         version_str = version_match.group()
+                        _LOGGER.debug(f"📟 VERSION PARSING: Found version string: {version_str} from line: {line}")
                         # If this looks like a main firmware version (longer), prefer it
                         if len(version_str) > 8:  # YA.16.08.0002 is longer than YA.15.20
                             main_firmware_version = version_str
+                            _LOGGER.debug(f"🎯 VERSION PARSING: Set as main firmware (length {len(version_str)}): {version_str}")
                         elif main_firmware_version is None:
                             main_firmware_version = version_str
+                            _LOGGER.debug(f"🔄 VERSION PARSING: Set as fallback firmware: {version_str}")
         
         # Use main firmware version if found, otherwise use boot version, otherwise "Unknown"
         if main_firmware_version:
             version_info["firmware_version"] = main_firmware_version
+            _LOGGER.debug(f"✅ VERSION PARSING: Using main firmware version: {main_firmware_version}")
         elif "firmware_version" not in version_info and boot_version:
             version_info["firmware_version"] = boot_version
+            _LOGGER.debug(f"⚠️ VERSION PARSING: Fallback to boot ROM version: {boot_version}")
         elif "firmware_version" not in version_info:
             version_info["firmware_version"] = "Unknown"
+            _LOGGER.debug(f"❌ VERSION PARSING: No version found, using Unknown")
             
         # Set defaults for missing fields
         if "model" not in version_info:
             version_info["model"] = "HP/Aruba Switch"
+            _LOGGER.debug(f"⚠️ VERSION PARSING: No model found, using default: HP/Aruba Switch")
         if "serial_number" not in version_info:
             version_info["serial_number"] = "Unknown"
             
-        _LOGGER.debug(f"Parsed version info: {version_info}")
+        _LOGGER.debug(f"🏁 VERSION PARSING FINAL: {version_info}")
         return version_info
 
     async def get_current_data(self) -> dict:
