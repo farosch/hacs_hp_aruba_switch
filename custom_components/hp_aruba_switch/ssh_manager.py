@@ -578,6 +578,16 @@ class ArubaSSHManager:
                                                 duplex = "full"
                                             elif duplex_code.startswith('H'):
                                                 duplex = "half"
+                                elif mode == ".":
+                                    # SFP ports show "." when no link - these are typically SFP/uplink ports
+                                    # For ports 25-28 (common SFP ports), assume they are SFP capable
+                                    try:
+                                        port_int = int(port_num)
+                                        if port_int >= 25:  # SFP ports are typically 25+
+                                            speed_mbps = 1000  # SFP ports are typically 1Gbps capable
+                                            duplex = "full"
+                                    except ValueError:
+                                        pass
                                 
                                 brief_info[port_num] = {
                                     "link_speed_mbps": speed_mbps,
@@ -676,6 +686,8 @@ class ArubaSSHManager:
     def _parse_version_output(self, output: str) -> dict:
         """Parse 'show version' output for firmware and version information."""
         version_info = {}
+        main_firmware_version = None
+        boot_version = None
         
         for line in output.split('\n'):
             line = line.strip()
@@ -683,6 +695,13 @@ class ArubaSSHManager:
                 continue
                 
             line_lower = line.lower()
+            
+            # Extract switch model from command prompt (e.g., "HP-2530-24G-PoEP#")
+            if line.endswith('#') and '-' in line and 'hp' in line_lower:
+                import re
+                model_match = re.search(r'(HP-[A-Z0-9-]+)', line, re.IGNORECASE)
+                if model_match:
+                    version_info["model"] = model_match.group(1)
             
             # Parse various version fields from HP/Aruba switches
             if ":" in line:
@@ -695,9 +714,10 @@ class ArubaSSHManager:
                     if any(x in key for x in ["software revision", "firmware revision", "version", "release"]):
                         version_info["firmware_version"] = value
                     elif any(x in key for x in ["rom version", "boot rom", "bootrom"]):
-                        version_info["boot_version"] = value  
+                        boot_version = value  # Store but don't use as primary
                     elif any(x in key for x in ["model", "product", "type"]):
-                        version_info["model"] = value
+                        if "model" not in version_info:  # Don't override hostname-extracted model
+                            version_info["model"] = value
                     elif any(x in key for x in ["serial", "serial number"]):
                         version_info["serial_number"] = value
                     elif any(x in key for x in ["mac address", "base mac"]):
@@ -707,19 +727,30 @@ class ArubaSSHManager:
                     elif any(x in key for x in ["uptime", "system uptime"]):
                         version_info["uptime"] = value
                         
-            # Also look for patterns without colons
+            # Also look for patterns without colons - prioritize main firmware over boot ROM
             elif any(x in line_lower for x in ["version", "revision", "firmware"]):
                 # Handle version lines that don't follow key:value format
                 if "ya." in line_lower or "kb." in line_lower or "yc." in line_lower:
                     # Aruba version format like "YA.16.08.0002"
                     import re
-                    version_match = re.search(r'[YK][A-Z]\.[\d.]+', line, re.IGNORECASE)
-                    if version_match and "firmware_version" not in version_info:
-                        version_info["firmware_version"] = version_match.group()
+                    version_match = re.search(r'[YK][A-Z]\.[\.\d]+', line, re.IGNORECASE)
+                    if version_match:
+                        version_str = version_match.group()
+                        # If this looks like a main firmware version (longer), prefer it
+                        if len(version_str) > 8:  # YA.16.08.0002 is longer than YA.15.20
+                            main_firmware_version = version_str
+                        elif main_firmware_version is None:
+                            main_firmware_version = version_str
         
-        # Set defaults for missing fields
-        if "firmware_version" not in version_info:
+        # Use main firmware version if found, otherwise use boot version, otherwise "Unknown"
+        if main_firmware_version:
+            version_info["firmware_version"] = main_firmware_version
+        elif "firmware_version" not in version_info and boot_version:
+            version_info["firmware_version"] = boot_version
+        elif "firmware_version" not in version_info:
             version_info["firmware_version"] = "Unknown"
+            
+        # Set defaults for missing fields
         if "model" not in version_info:
             version_info["model"] = "HP/Aruba Switch"
         if "serial_number" not in version_info:
