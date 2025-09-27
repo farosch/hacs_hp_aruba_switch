@@ -53,9 +53,9 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
         self._port = port
         self._is_poe = is_poe
         self._entry_id = entry_id
-        self._is_on = False
         self._attr_name = f"Port {port} {'PoE' if is_poe else ''}".strip()
         self._attr_unique_id = f"{coordinator.host}_{port}_{'poe' if is_poe else 'port'}"
+        self._attr_is_on = False
         
         # Set appropriate icons for different entity types
         if is_poe:
@@ -91,8 +91,8 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self):
         """Return true if switch is on."""
-        _LOGGER.debug(f"🔍 is_on property called for {self._attr_name}: {self._is_on}")
-        return self._is_on
+        _LOGGER.debug(f"🔍 is_on property called for {self._attr_name}: {self._attr_is_on}")
+        return self._attr_is_on
 
     @property
     def available(self):
@@ -128,7 +128,7 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
         _LOGGER.debug(f"Turn_on result for {self._attr_name}: {repr(result)}")
         
         if result is not None:
-            self._is_on = True
+            self._attr_is_on = True
             # Force a coordinator refresh to get updated data
             await asyncio.sleep(1)  # Wait for switch to process
             await self._coordinator.async_request_refresh()
@@ -147,7 +147,7 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
         _LOGGER.debug(f"Turn_off result for {self._attr_name}: {repr(result)}")
         
         if result is not None:
-            self._is_on = False
+            self._attr_is_on = False
             # Force a coordinator refresh to get updated data
             await asyncio.sleep(1)  # Wait for switch to process
             await self._coordinator.async_request_refresh()
@@ -208,14 +208,14 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
                 elif power_enable and isinstance(poe_status_value, bool):
                     poe_active = poe_status_value  # Legacy boolean support
                 
-                self._is_on = poe_active
-                _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status_value}, final_state={self._is_on}")
+                self._attr_is_on = poe_active
+                _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status_value}, final_state={self._attr_is_on}")
             else:
                 # Parse interface status from cached data
                 port_enabled = status.get("port_enabled", False)
                 link_up = status.get("link_status", "down").lower() == "up"
-                self._is_on = port_enabled  # Only check if port is administratively enabled
-                _LOGGER.debug(f"Interface port {self._port}: port_enabled={port_enabled}, link_up={link_up}, final_state={self._is_on}")
+                self._attr_is_on = port_enabled  # Only check if port is administratively enabled
+                _LOGGER.debug(f"Interface port {self._port}: port_enabled={port_enabled}, link_up={link_up}, final_state={self._attr_is_on}")
             
             # Update all attributes with comprehensive port information
             import datetime
@@ -247,7 +247,7 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
             
             # Mark entity as available
             self._attr_available = True
-            _LOGGER.debug(f"✅ Successfully updated {self._attr_name} - is_on: {self._is_on}")
+            _LOGGER.debug(f"✅ Successfully updated {self._attr_name} - is_on: {self._attr_is_on}")
             
             # Notify Home Assistant of state change
             self.async_write_ha_state()
