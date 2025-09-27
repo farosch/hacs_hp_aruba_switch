@@ -2,44 +2,11 @@
 
 ## Version 1.0.7 - Comprehensive Monitoring
 
-### 🔌 **Offline Handling & Reliability** 🆕
-
-#### **Comprehensive Offline Detection**
-- Automatic detection when switch becomes unreachable
-- Multiple detection methods: SSH timeouts, connection errors, no data response
-- Timeout-based detection for long-term offline switches (3× refresh interval)
-
-#### **Entity Availability Management**
-- All entities become "unavailable" in Home Assistant when switch is offline
-- No stale cached data displayed during network outages
-- Automatic recovery when switch connectivity is restored
-- Graceful command failures with informative warnings
-
-#### **Enhanced Monitoring & Logging**
-- Clear state transition logs: "Switch X.X.X.X went offline" / "is back online"
-- Specific failure reason reporting (timeout, connection error, no data)
-- Smart logging that only reports actual state changes (reduces log noise)
-- Manual connectivity testing capability for diagnostics
-
-#### **User-Friendly Experience**
-- No manual intervention required for offline/online transitions
-- Clear visual feedback in Home Assistant (unavailable vs stale data)
-- Reliable recovery without needing integration restart
-- Better troubleshooting with informative error messages
-
-### ⚙️ **Technical Improvements**
-
-#### **Critical Parsing Fix** 🐛
-- Fixed major bug where all ports showed as "off" despite being administratively enabled
-- Root cause: "Port Enabled" lines were misidentified as interface headers
-- Improved interface header detection to prevent parsing conflicts
-- All ports now correctly display their administrative enable/disable state
-
 #### **Single SSH Session Architecture** 🚀
 **MAJOR ARCHITECTURAL IMPROVEMENT**: Completely redesigned to use proper coordinator pattern eliminating concurrent SSH connection issues.
 
 **Before (Problematic):**
-- 56 individual entities each making separate SSH calls during setup
+- individual entities making separate SSH calls during setup
 - Multiple simultaneous SSH sessions overwhelming the switch
 - Setup timeouts and `CancelledError` exceptions
 - Poor performance and reliability issues
@@ -48,30 +15,18 @@
 - **Single coordinator** manages ONE SSH session for entire integration
 - Uses Home Assistant's `DataUpdateCoordinator` pattern with `CoordinatorEntity`
 - Executes 4 SSH commands every 30 seconds to collect data for ALL ports
-- All entities read from shared cache - **zero individual SSH calls**
-- Maximum 1 concurrent SSH connection at any time
 
 **Performance Benefits:**
 - ⚡ Faster setup (seconds instead of timeouts)
 - 🔒 Switch protection (no overwhelming with connections)  
-- 📊 Efficient bulk data collection for all 50+ entities
+- 📊 Efficient bulk data collection for all entities
 - 🛡️ Eliminates race conditions and connection conflicts
-- Control commands (turn_on/off) properly use coordinator's SSH manager
-
-**This resolves setup timeout issues and provides the reliable, single-session architecture users expect.**
-
-#### **Enhanced HP/Aruba Compatibility**
-- Better parsing of comma-separated statistics
-- Improved interface brief format support  
-- Enhanced PoE status detection and parsing
-- Support for various HP/Aruba output formats
 
 #### **Rich Entity Attributes**
 - Switch entities expose comprehensive port data
 - Traffic statistics, link details, and timestamps
 - PoE entities include detailed power information
-- Perfect for advanced automations and dashboardsres
-**September 25, 2025**
+- Perfect for advanced automations and dashboards
 
 ### ✨ **New Monitoring Features**
 
@@ -85,28 +40,8 @@
 - Individual packets in/out sensors per port
 - Total increasing counters for long-term monitoring
 
-#### **Link Status Sensors**
-- Port link status with speed and duplex information
-- Auto-negotiation status and cable type detection
-- Enhanced speed detection supporting HP/Aruba formats
-
-#### **Binary Link Sensors**
-- Simple on/off connectivity status per port
-- Rich attributes with detailed link information
-- Perfect for automations and notifications
-
 #### **Switch Connectivity Sensor** 🆕
 - Real-time switch online/offline status monitoring
-- Dedicated binary sensor showing switch connectivity state
-- Detailed attributes including last successful connection time
-- Essential for network monitoring and alerting
-
-#### **Version & Firmware Sensors** 🆕
-- Switch firmware version sensor with complete version information
-- Switch model sensor for hardware identification  
-- Switch serial number sensor for asset management
-- Automatic parsing of HP/Aruba version output formats
-- Rich attributes with boot version, MAC address, and hardware details
 
 ### ⚙️ **Configuration Enhancements**
 
@@ -141,38 +76,11 @@
 - Combined command execution with intelligent output parsing
 - Reduced connection overhead and improved reliability
 
-#### **Enhanced HP/Aruba Compatibility**
-- Better parsing of comma-separated statistics
-- Improved interface brief format support  
-- Enhanced PoE status detection and parsing
-- Support for various HP/Aruba output formats
-
 #### **Rich Entity Attributes**
 - Switch entities expose comprehensive port data
 - Traffic statistics, link details, and timestamps
 - PoE entities include detailed power information
 - Perfect for advanced automations and dashboards
-
-### 🌍 **User Experience**
-
-#### **Staggered Entity Updates**
-- Prevents overwhelming switches with simultaneous queries
-- Intelligent timing offsets for different entity types
-- Maintains data freshness while being switch-friendly
-
-#### **Expanded Language Support**
-- Updated translations for new configuration options
-- Consistent entity naming across all supported languages
-
-### 🐛 **Bug Fixes**
-
-- Fixed sensors showing 0 values for traffic statistics
-- Improved speed sensor parsing for HP/Aruba "1000FDx" format
-- Better error handling for SSH timeouts and connection issues
-- Enhanced debug logging for easier troubleshooting
-
----
-**Note**: Restart Home Assistant to activate new features. Reconfigure integration to access refresh interval setting.
 
 ## Version 1.0.2 - HACS Compatibility
 **September 23, 2025**
