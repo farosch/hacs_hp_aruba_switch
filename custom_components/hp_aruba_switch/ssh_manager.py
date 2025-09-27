@@ -513,14 +513,18 @@ class ArubaSSHManager:
                                     continue
                             return numbers
                         
+                        # Handle HP/Aruba switch format: "Bytes Rx        : 171,771,942          Bytes Tx        : 142,120,852"
                         if "bytes rx" in key:
+                            # Extract all numbers from the line (includes both Rx and Tx values)  
                             numbers = extract_numbers(value_str)
                             if len(numbers) >= 2:
                                 statistics[current_interface]["bytes_in"] = numbers[0]
                                 statistics[current_interface]["bytes_out"] = numbers[1]
                             elif len(numbers) == 1:
                                 statistics[current_interface]["bytes_in"] = numbers[0]
+                        # Handle HP/Aruba switch format: "Unicast Rx      : 239,357              Unicast Tx      : 195,819"
                         elif "unicast rx" in key:
+                            # Extract all numbers from the line (includes both Rx and Tx values)
                             numbers = extract_numbers(value_str)
                             if len(numbers) >= 2:
                                 statistics[current_interface]["packets_in"] = numbers[0]
@@ -700,7 +704,16 @@ class ArubaSSHManager:
             line_lower = line.lower()
             
             # Extract switch model from command prompt (e.g., "HP-2530-24G-PoEP#")
-            if line.endswith('#') and '-' in line and 'hp' in line_lower:
+            # Look for HP model patterns in any line, not just those ending with #
+            if ('hp-' in line_lower or 'aruba-' in line_lower) and ('#' in line or 'show' in line_lower):
+                import re
+                # More flexible pattern to catch model names in various contexts
+                model_match = re.search(r'((?:HP|Aruba)-[A-Z0-9-]+)', line, re.IGNORECASE)
+                if model_match:
+                    version_info["model"] = model_match.group(1)
+                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found model in line: {model_match.group(1)} from line: {line}")
+            elif line.endswith('#') and '-' in line and 'hp' in line_lower:
+                # Fallback: original logic for lines ending with #
                 import re
                 model_match = re.search(r'(HP-[A-Z0-9-]+)', line, re.IGNORECASE)
                 if model_match:
