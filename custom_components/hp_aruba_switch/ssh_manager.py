@@ -229,45 +229,120 @@ class ArubaSSHManager:
 
 
     async def get_all_switch_data(self) -> tuple[dict, dict, dict, dict, dict]:
-        """Execute all commands in a single SSH session and parse the combined output."""
-        # Define all commands we need to execute
+        """Execute all commands (prefer single session, fall back to sequential) and parse the output."""
         commands = [
             "show interface all",
-            "show interface brief", 
+            "show interface brief",
             "show power-over-ethernet all",
-            "show version"
+            "show version",
         ]
-        
-        # Combine all commands into a single multi-line command
-        combined_command = "\n".join(commands)
-        
-        _LOGGER.debug(f"🔗 Executing combined commands in single session: {commands}")
-        result = await self.execute_command(combined_command, timeout=30)
-        
-        if not result:
-            _LOGGER.warning(f"❌ Combined command execution failed for {self.host}")
-            return {}, {}, {}, {}, {}
-        
-        _LOGGER.info(f"✅ Successfully executed {len(commands)} commands in single session for {self.host}")
-        _LOGGER.debug(f"📊 Combined output length: {len(result)} characters")
-        
-        # Parse the combined output with timeout
-        _LOGGER.debug(f"🔍 Starting to parse combined output for {self.host}")
-        try:
-            # Run parsing in executor with timeout to prevent hanging
+
+        async def _parse_combined_result(raw_output: str) -> tuple[dict, dict, dict, dict, dict]:
+            _LOGGER.debug(f"🔍 Starting to parse combined output for {self.host}")
             loop = asyncio.get_event_loop()
-            parsed_result = await asyncio.wait_for(
-                loop.run_in_executor(None, self._parse_combined_output, result, commands),
-                timeout=15.0  # 15 second timeout for parsing
+            parsed = await asyncio.wait_for(
+                loop.run_in_executor(None, self._parse_combined_output, raw_output, commands),
+                timeout=15.0,
             )
             _LOGGER.debug(f"✅ Parsing completed for {self.host}")
-            return parsed_result
-        except asyncio.TimeoutError:
-            _LOGGER.error(f"❌ Parsing timed out after 15s for {self.host}")
-            return {}, {}, {}, {}, {}
-        except Exception as e:
-            _LOGGER.error(f"❌ Parsing failed for {self.host}: {e}")
-            return {}, {}, {}, {}, {}
+            return parsed
+
+        # First attempt: execute all commands in a single session
+        combined_command = "\n".join(commands)
+        _LOGGER.debug(f"🔗 Executing combined commands in single session: {commands}")
+        combined_output = await self.execute_command(combined_command, timeout=30)
+
+        if combined_output:
+            _LOGGER.info(f"✅ Successfully executed {len(commands)} commands in single session for {self.host}")
+            _LOGGER.debug(f"📊 Combined output length: {len(combined_output)} characters")
+
+            try:
+                interfaces, statistics, link_details, poe_ports, version_info = await _parse_combined_result(combined_output)
+
+                if any([interfaces, statistics, link_details, poe_ports, version_info]):
+                    return interfaces, statistics, link_details, poe_ports, version_info
+
+                _LOGGER.warning(
+                    "⚠️ Combined parsing returned no usable data for %s, falling back to sequential execution",
+                    self.host,
+                )
+            except asyncio.TimeoutError:
+                _LOGGER.error(f"❌ Parsing timed out after 15s for {self.host} (combined output)")
+            except Exception as err:
+                _LOGGER.error(f"❌ Parsing combined output failed for {self.host}: {err}")
+        else:
+            _LOGGER.warning(f"❌ Combined command execution failed for {self.host}, falling back to sequential commands")
+
+        # Fallback: execute commands sequentially to ensure sensors still receive data
+        sequential_outputs: Dict[str, str] = {}
+        for cmd in commands:
+            _LOGGER.debug(f"� Executing fallback command '{cmd}' for {self.host}")
+            try:
+                output = await self.execute_command(cmd, timeout=20)
+            except Exception as err:  # pragma: no cover - defensive logging
+                _LOGGER.error(f"❌ Fallback command '{cmd}' failed for {self.host}: {err}")
+                continue
+
+            if not output:
+                _LOGGER.warning(f"⚠️ Fallback command '{cmd}' returned no data for {self.host}")
+                continue
+
+            sequential_outputs[cmd] = output
+
+        interfaces: Dict[str, Any] = {}
+        statistics: Dict[str, Any] = {}
+        link_details: Dict[str, Any] = {}
+        poe_ports: Dict[str, Any] = {}
+        version_info: Dict[str, Any] = {}
+
+        if "show interface all" in sequential_outputs:
+            ifaces, stats, links = self._parse_interface_all_output(sequential_outputs["show interface all"])
+            interfaces.update(ifaces)
+            statistics.update(stats)
+            link_details.update(links)
+
+        if "show interface brief" in sequential_outputs:
+            brief_info = self._parse_interface_brief_output(sequential_outputs["show interface brief"])
+            for port, info in brief_info.items():
+                if port in link_details:
+                    link_details[port].update({
+                        "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                        "duplex": info["duplex"],
+                        "mode": info.get("mode", "unknown"),
+                        "mdi": info.get("mdi", "unknown"),
+                    })
+                else:
+                    link_details[port] = {
+                        "link_up": False,
+                        "port_enabled": False,
+                        "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                        "duplex": info["duplex"],
+                        "auto_negotiation": "unknown",
+                        "cable_type": "unknown",
+                        "mode": info.get("mode", "unknown"),
+                        "mdi": info.get("mdi", "unknown"),
+                    }
+
+        if "show power-over-ethernet all" in sequential_outputs:
+            poe_ports.update(self._parse_poe_output(sequential_outputs["show power-over-ethernet all"]))
+
+        if "show version" in sequential_outputs:
+            version_info.update(self._parse_version_output(sequential_outputs["show version"]))
+
+        if any([interfaces, statistics, link_details, poe_ports, version_info]):
+            _LOGGER.info(
+                "✅ Fallback sequential parsing succeeded for %s (interfaces=%d, stats=%d, links=%d, poe=%d, version=%s)",
+                self.host,
+                len(interfaces),
+                len(statistics),
+                len(link_details),
+                len(poe_ports),
+                bool(version_info),
+            )
+            return interfaces, statistics, link_details, poe_ports, version_info
+
+        _LOGGER.error(f"❌ Sequential fallback produced no usable data for {self.host}")
+        return {}, {}, {}, {}, {}
     
     def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict, dict]:
         """Parse the combined output from all commands."""
@@ -422,116 +497,149 @@ class ArubaSSHManager:
     
     def _parse_interface_all_output(self, output: str) -> tuple[dict, dict, dict]:
         """Parse 'show interface all' output for interfaces, statistics, and link details."""
-        interfaces = {}
-        statistics = {}
-        link_details = {}
-        current_interface = None
-        
-        for line in output.split('\n'):
-            line = line.strip()
+        interfaces: dict[str, dict] = {}
+        statistics: dict[str, dict] = {}
+        link_details: dict[str, dict] = {}
+        current_interface: str | None = None
+        in_totals_section = False
+
+        for raw_line in output.split('\n'):
+            line = raw_line.strip()
             if not line:
+                in_totals_section = False
                 continue
-                
+
+            line_lower = line.lower()
+
             # Look for interface headers - try multiple patterns
-            # CRITICAL: Don't match "Port Enabled" lines as interface headers!
-            if ("port counters for port" in line.lower() or 
-                "interface" in line.lower() and any(x in line.lower() for x in ["port", "ethernet", "gi", "fa", "te"]) or
-                (line.lower().startswith("port") and "port counters" in line.lower()) or
-                ("status and counters" in line.lower() and "port" in line.lower())):
-                
+            if (
+                "port counters for port" in line_lower
+                or ("interface" in line_lower and any(x in line_lower for x in ["port", "ethernet", "gi", "fa", "te"]))
+                or (line_lower.startswith("port") and "port counters" in line_lower)
+                or ("status and counters" in line_lower and "port" in line_lower)
+            ):
                 try:
-                    # Try multiple extraction methods
                     port_num = None
-                    if "port counters for port" in line.lower():
+                    if "port counters for port" in line_lower:
                         port_num = line.split("port")[-1].strip()
-                    elif "interface" in line.lower():
+                    elif "interface" in line_lower:
                         import re
-                        match = re.search(r'(?:interface|port|gi|fa|te)[\s]*(\d+)', line.lower())
+
+                        match = re.search(r"(?:interface|port|gi|fa|te)[\s]*(\d+)", line_lower)
                         if match:
                             port_num = match.group(1)
-                    elif line.lower().startswith("port"):
+                    elif line_lower.startswith("port"):
                         import re
-                        match = re.search(r'port[\s]*(\d+)', line.lower())
+
+                        match = re.search(r"port[\s]*(\d+)", line_lower)
                         if match:
                             port_num = match.group(1)
-                    
+
                     if port_num:
                         current_interface = port_num
                         interfaces[current_interface] = {"port_enabled": False, "link_status": "down"}
-                        statistics[current_interface] = {"bytes_in": 0, "bytes_out": 0, "packets_in": 0, "packets_out": 0}
+                        statistics[current_interface] = {
+                            "bytes_in": 0,
+                            "bytes_out": 0,
+                            "packets_in": 0,
+                            "packets_out": 0,
+                            "bytes_rx": 0,
+                            "bytes_tx": 0,
+                            "unicast_rx": 0,
+                            "unicast_tx": 0,
+                        }
                         link_details[current_interface] = {
-                            "link_up": False, "port_enabled": False, "link_speed": "unknown",
-                            "duplex": "unknown"
+                            "link_up": False,
+                            "port_enabled": False,
+                            "link_speed": "unknown",
+                            "duplex": "unknown",
                         }
                         _LOGGER.debug(f"Started parsing port {current_interface} from line: '{line}'")
-                except Exception as e:
+                        in_totals_section = False
+                except Exception:
                     continue
-                    
-            elif current_interface:
-                line_lower = line.lower()
-                
-                # Parse port status, link details, and statistics using existing logic
-                # Bulletproof parsing: use simple string matching with whitespace normalization
-                import re
-                
-                # Debug: Log every line that contains "enabled" to see what we're working with
-                if "enabled" in line_lower:
-                    _LOGGER.debug(f"Port {current_interface}: DEBUG - Line contains 'enabled': '{line}' (repr: {repr(line)})")
-                
-                # Normalize whitespace and check for "port enabled" followed by colon pattern
-                normalized_line = re.sub(r'\s+', ' ', line_lower.strip())
-                if ('port enabled :' in normalized_line) or ('port enabled:' in normalized_line):
-                    value_part = line.split(":", 1)[1].strip().lower()
-                    is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
-                    interfaces[current_interface]["port_enabled"] = is_enabled
-                    link_details[current_interface]["port_enabled"] = is_enabled
-                    _LOGGER.debug(f"Port {current_interface}: Found 'Port Enabled' line: '{line}' -> value_part: '{value_part}' -> is_enabled: {is_enabled}")
-                
-                # Bulletproof parsing: use simple string matching with whitespace normalization for Link Status  
-                elif ('link status :' in normalized_line) or ('link status:' in normalized_line):
-                    value_part = line.split(":", 1)[1].strip().lower()
-                    link_up = "up" in value_part
-                    interfaces[current_interface]["link_status"] = "up" if link_up else "down"
-                    link_details[current_interface]["link_up"] = link_up
-                    _LOGGER.debug(f"Port {current_interface}: Found 'Link Status' line: '{line}' -> value_part: '{value_part}' -> link_up: {link_up}")
-                
-                elif ":" in line:
-                    parts = line.split(":", 1)
-                    if len(parts) == 2:
-                        key = parts[0].strip().lower()
-                        value_str = parts[1].strip()
-                        
-                        # Extract statistics using existing logic
-                        def extract_numbers(text):
-                            import re
-                            numbers = []
-                            for match in re.finditer(r'(\d{1,3}(?:,\d{3})*)', text):
-                                number_str = match.group(1).replace(',', '')
-                                try:
-                                    numbers.append(int(number_str))
-                                except ValueError:
-                                    continue
-                            return numbers
-                        
-                        # Handle HP/Aruba switch format: "Bytes Rx        : 171,771,942          Bytes Tx        : 142,120,852"
-                        if "bytes rx" in key:
-                            # Extract all numbers from the line (includes both Rx and Tx values)  
-                            numbers = extract_numbers(value_str)
-                            if len(numbers) >= 2:
-                                statistics[current_interface]["bytes_rx"] = numbers[0]
-                                statistics[current_interface]["bytes_tx"] = numbers[1]
-                            elif len(numbers) == 1:
-                                statistics[current_interface]["bytes_rx"] = numbers[0]
-                        # Handle HP/Aruba switch format: "Unicast Rx      : 239,357              Unicast Tx      : 195,819"
-                        elif "unicast rx" in key:
-                            # Extract all numbers from the line (includes both Rx and Tx values)
-                            numbers = extract_numbers(value_str)
-                            if len(numbers) >= 2:
-                                statistics[current_interface]["unicast_rx"] = numbers[0]
-                                statistics[current_interface]["unicast_tx"] = numbers[1]
-                            elif len(numbers) == 1:
-                                statistics[current_interface]["unicast_rx"] = numbers[0]
-        
+
+                continue
+
+            if current_interface is None:
+                continue
+
+            # Track which section of the output we're parsing so packet counters don't get overwritten by rate lines
+            if "totals (since boot" in line_lower:
+                in_totals_section = True
+                continue
+            if any(trigger in line_lower for trigger in ["errors (since boot", "others (since boot", "rates ("]):
+                in_totals_section = False
+
+            # Parse port status, link details, and statistics using existing logic
+            import re
+
+            if "enabled" in line_lower:
+                _LOGGER.debug(
+                    f"Port {current_interface}: DEBUG - Line contains 'enabled': '{line}' (repr: {repr(line)})"
+                )
+
+            normalized_line = re.sub(r"\s+", " ", line_lower.strip())
+            if ("port enabled :" in normalized_line) or ("port enabled:" in normalized_line):
+                value_part = line.split(":", 1)[1].strip().lower()
+                is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
+                interfaces[current_interface]["port_enabled"] = is_enabled
+                link_details[current_interface]["port_enabled"] = is_enabled
+                _LOGGER.debug(
+                    f"Port {current_interface}: Found 'Port Enabled' line: '{line}' -> value_part: '{value_part}' -> is_enabled: {is_enabled}"
+                )
+                continue
+
+            if ("link status :" in normalized_line) or ("link status:" in normalized_line):
+                value_part = line.split(":", 1)[1].strip().lower()
+                link_up = "up" in value_part
+                interfaces[current_interface]["link_status"] = "up" if link_up else "down"
+                link_details[current_interface]["link_up"] = link_up
+                _LOGGER.debug(
+                    f"Port {current_interface}: Found 'Link Status' line: '{line}' -> value_part: '{value_part}' -> link_up: {link_up}"
+                )
+                continue
+
+            if ":" not in line:
+                continue
+
+            parts = line.split(":", 1)
+            if len(parts) != 2:
+                continue
+
+            key = parts[0].strip().lower()
+            value_str = parts[1].strip()
+
+            def extract_numbers(text: str) -> list[int]:
+                numbers: list[int] = []
+                for match in re.finditer(r"(\d{1,3}(?:,\d{3})*)", text):
+                    number_str = match.group(1).replace(",", "")
+                    try:
+                        numbers.append(int(number_str))
+                    except ValueError:
+                        continue
+                return numbers
+
+            if "bytes rx" in key and in_totals_section:
+                numbers = extract_numbers(value_str)
+                if len(numbers) >= 2:
+                    statistics[current_interface]["bytes_rx"] = numbers[0]
+                    statistics[current_interface]["bytes_tx"] = numbers[1]
+                elif len(numbers) == 1:
+                    statistics[current_interface]["bytes_rx"] = numbers[0]
+                continue
+
+            if "unicast rx" in key and in_totals_section and "pkts/sec" not in key:
+                numbers = extract_numbers(value_str)
+                if len(numbers) >= 2:
+                    statistics[current_interface]["unicast_rx"] = numbers[0]
+                    statistics[current_interface]["unicast_tx"] = numbers[1]
+                    statistics[current_interface]["packets_in"] = numbers[0]
+                    statistics[current_interface]["packets_out"] = numbers[1]
+                elif len(numbers) == 1:
+                    statistics[current_interface]["unicast_rx"] = numbers[0]
+                    statistics[current_interface]["packets_in"] = numbers[0]
+
         return interfaces, statistics, link_details
     
     def _parse_interface_brief_output(self, output: str) -> dict:
@@ -806,7 +914,8 @@ class ArubaSSHManager:
                     "link_details": link_details,
                     "poe_ports": poe_ports,
                     "version_info": version_info,
-                    "available": True
+                    "available": True,
+                    "last_successful_connection": self._last_successful_connection,
                 }
             else:
                 _LOGGER.warning(f"❌ No data received from {self.host}")

@@ -162,6 +162,9 @@ class ArubaSwitchStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
+        data = self.coordinator.data or {}
+        if "available" in data:
+            return "online" if data.get("available") else "offline"
         return "online" if self.coordinator.last_update_success else "offline"
         
     @property
@@ -173,9 +176,11 @@ class ArubaSwitchStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
+        data = self.coordinator.data or {}
         return {
             "host": self.coordinator.host,
-            "last_successful_update": getattr(self.coordinator, '_last_successful_connection', None),
+            "last_successful_update": data.get("last_successful_connection"),
+            "last_coordinator_refresh_success": self.coordinator.last_update_success,
         }
         
     @property
