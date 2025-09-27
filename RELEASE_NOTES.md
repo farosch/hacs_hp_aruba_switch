@@ -1,6 +1,7 @@
 # Release Notes
 
-## Version 1.0.7 - Comprehensive Monitoring
+## Version 1.0.7 - One SSH to rule them all!
+**September 27, 2025**
 
 #### **Single SSH Session Architecture** 🚀
 **MAJOR ARCHITECTURAL IMPROVEMENT**: Completely redesigned to use proper coordinator pattern eliminating concurrent SSH connection issues.
