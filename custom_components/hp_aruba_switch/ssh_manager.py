@@ -518,19 +518,19 @@ class ArubaSSHManager:
                             # Extract all numbers from the line (includes both Rx and Tx values)  
                             numbers = extract_numbers(value_str)
                             if len(numbers) >= 2:
-                                statistics[current_interface]["bytes_in"] = numbers[0]
-                                statistics[current_interface]["bytes_out"] = numbers[1]
+                                statistics[current_interface]["bytes_rx"] = numbers[0]
+                                statistics[current_interface]["bytes_tx"] = numbers[1]
                             elif len(numbers) == 1:
-                                statistics[current_interface]["bytes_in"] = numbers[0]
+                                statistics[current_interface]["bytes_rx"] = numbers[0]
                         # Handle HP/Aruba switch format: "Unicast Rx      : 239,357              Unicast Tx      : 195,819"
                         elif "unicast rx" in key:
                             # Extract all numbers from the line (includes both Rx and Tx values)
                             numbers = extract_numbers(value_str)
                             if len(numbers) >= 2:
-                                statistics[current_interface]["packets_in"] = numbers[0]
-                                statistics[current_interface]["packets_out"] = numbers[1]
+                                statistics[current_interface]["unicast_rx"] = numbers[0]
+                                statistics[current_interface]["unicast_tx"] = numbers[1]
                             elif len(numbers) == 1:
-                                statistics[current_interface]["packets_in"] = numbers[0]
+                                statistics[current_interface]["unicast_rx"] = numbers[0]
         
         return interfaces, statistics, link_details
     
@@ -745,23 +745,22 @@ class ArubaSSHManager:
                     elif any(x in key for x in ["uptime", "system uptime"]):
                         version_info["uptime"] = value
                         
-            # Also look for patterns without colons - prioritize main firmware over boot ROM
-            elif any(x in line_lower for x in ["version", "revision", "firmware"]):
-                # Handle version lines that don't follow key:value format
-                if "ya." in line_lower or "kb." in line_lower or "yc." in line_lower:
-                    # Aruba version format like "YA.16.08.0002"
-                    import re
-                    version_match = re.search(r'[YK][A-Z]\.[\.\d]+', line, re.IGNORECASE)
-                    if version_match:
-                        version_str = version_match.group()
-                        _LOGGER.debug(f"📟 VERSION PARSING: Found version string: {version_str} from line: {line}")
-                        # If this looks like a main firmware version (longer), prefer it
-                        if len(version_str) > 8:  # YA.16.08.0002 is longer than YA.15.20
-                            main_firmware_version = version_str
-                            _LOGGER.debug(f"🎯 VERSION PARSING: Set as main firmware (length {len(version_str)}): {version_str}")
-                        elif main_firmware_version is None:
-                            main_firmware_version = version_str
-                            _LOGGER.debug(f"🔄 VERSION PARSING: Set as fallback firmware: {version_str}")
+            # Also look for version patterns in any line - not just those with version keywords
+            # Handle version lines that don't follow key:value format
+            if "ya." in line_lower or "kb." in line_lower or "yc." in line_lower:
+                # Aruba version format like "YA.16.08.0002"
+                import re
+                version_match = re.search(r'[YK][A-Z]\.[\.\d]+', line, re.IGNORECASE)
+                if version_match:
+                    version_str = version_match.group()
+                    _LOGGER.debug(f"📟 VERSION PARSING: Found version string: {version_str} from line: {line}")
+                    # If this looks like a main firmware version (longer), prefer it
+                    if len(version_str) > 8:  # YA.16.08.0002 is longer than YA.15.20
+                        main_firmware_version = version_str
+                        _LOGGER.debug(f"🎯 VERSION PARSING: Set as main firmware (length {len(version_str)}): {version_str}")
+                    elif main_firmware_version is None:
+                        main_firmware_version = version_str
+                        _LOGGER.debug(f"🔄 VERSION PARSING: Set as fallback firmware: {version_str}")
         
         # Use main firmware version if found, otherwise use boot version, otherwise "Unknown"
         if main_firmware_version:

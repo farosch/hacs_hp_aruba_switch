@@ -27,10 +27,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         # Add essential sensors for each port
         entities.append(ArubaPortLinkStatusSensor(coordinator, port, config_entry.entry_id))
         entities.append(ArubaPortActivitySensor(coordinator, port, config_entry.entry_id))
+        # Add statistics sensors for bytes and packets
+        entities.append(ArubaPortBytesInSensor(coordinator, port, config_entry.entry_id))
+        entities.append(ArubaPortBytesOutSensor(coordinator, port, config_entry.entry_id))
+        entities.append(ArubaPortPacketsInSensor(coordinator, port, config_entry.entry_id))
+        entities.append(ArubaPortPacketsOutSensor(coordinator, port, config_entry.entry_id))
 
     # Add switch info sensors
     entities.append(ArubaSwitchFirmwareSensor(coordinator, config_entry.entry_id))
-    entities.append(ArubaSwitchModelSensor(coordinator, config_entry.entry_id))
 
     _LOGGER.debug(f"Created {len(entities)} sensors using coordinator pattern")
     async_add_entities(entities, update_before_add=False)
@@ -184,29 +188,149 @@ class ArubaSwitchFirmwareSensor(CoordinatorEntity, SensorEntity):
         }
 
 
-class ArubaSwitchModelSensor(CoordinatorEntity, SensorEntity):
-    """Sensor for switch model."""
+class ArubaPortBytesInSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for port bytes received."""
     
-    def __init__(self, coordinator, entry_id):
+    def __init__(self, coordinator, port, entry_id):
         """Initialize the sensor."""
         super().__init__(coordinator)
+        self._port = port
         self._entry_id = entry_id
-        self._attr_name = f"Switch {coordinator.host} Model"
-        self._attr_unique_id = f"{coordinator.host}_model"
-        self._attr_icon = "mdi:router-network"
+        self._attr_name = f"Port {port} Bytes In"
+        self._attr_unique_id = f"{coordinator.host}_{port}_bytes_in"
+        self._attr_icon = "mdi:download"
+        self._attr_device_class = SensorDeviceClass.DATA_SIZE
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
         
     @property
-    def state(self):
+    def native_value(self):
         """Return the state of the sensor."""
         if not self.coordinator.data or not self.coordinator.data.get("available"):
-            return "unknown"
+            return None
             
-        # Get version data from coordinator live data
-        version_data = self.coordinator.data.get("version_info", {})
-        _LOGGER.debug(f"🔍 Model sensor: version_data = {version_data}")
-        if version_data:
-            return version_data.get("model", "unknown")
-        return "unknown"
+        statistics = self.coordinator.data.get("statistics", {})
+        port_stats = statistics.get(str(self._port), {})
+        return port_stats.get("bytes_rx", 0)
+        
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }
+
+
+class ArubaPortBytesOutSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for port bytes transmitted."""
+    
+    def __init__(self, coordinator, port, entry_id):
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._port = port
+        self._entry_id = entry_id
+        self._attr_name = f"Port {port} Bytes Out"
+        self._attr_unique_id = f"{coordinator.host}_{port}_bytes_out"
+        self._attr_icon = "mdi:upload"
+        self._attr_device_class = SensorDeviceClass.DATA_SIZE
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
+        
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
+            return None
+            
+        statistics = self.coordinator.data.get("statistics", {})
+        port_stats = statistics.get(str(self._port), {})
+        return port_stats.get("bytes_tx", 0)
+        
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }
+
+
+class ArubaPortPacketsInSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for port packets received."""
+    
+    def __init__(self, coordinator, port, entry_id):
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._port = port
+        self._entry_id = entry_id
+        self._attr_name = f"Port {port} Packets In"
+        self._attr_unique_id = f"{coordinator.host}_{port}_packets_in"
+        self._attr_icon = "mdi:download"
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
+            return None
+            
+        statistics = self.coordinator.data.get("statistics", {})
+        port_stats = statistics.get(str(self._port), {})
+        return port_stats.get("unicast_rx", 0)
+        
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+        
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.host)},
+            "name": f"Switch {self.coordinator.host}",
+            "manufacturer": "Aruba", 
+            "model": "Switch",
+        }
+
+
+class ArubaPortPacketsOutSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for port packets transmitted."""
+    
+    def __init__(self, coordinator, port, entry_id):
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._port = port
+        self._entry_id = entry_id
+        self._attr_name = f"Port {port} Packets Out"
+        self._attr_unique_id = f"{coordinator.host}_{port}_packets_out"
+        self._attr_icon = "mdi:upload"
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if not self.coordinator.data or not self.coordinator.data.get("available"):
+            return None
+            
+        statistics = self.coordinator.data.get("statistics", {})
+        port_stats = statistics.get(str(self._port), {})
+        return port_stats.get("unicast_tx", 0)
         
     @property
     def available(self):
