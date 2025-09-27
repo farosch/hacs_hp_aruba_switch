@@ -162,10 +162,14 @@ class ArubaSwitchStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
+        if not self.coordinator.last_update_success:
+            return "offline"
+
         data = self.coordinator.data or {}
         if "available" in data:
             return "online" if data.get("available") else "offline"
-        return "online" if self.coordinator.last_update_success else "offline"
+
+        return "online"
         
     @property
     def available(self):

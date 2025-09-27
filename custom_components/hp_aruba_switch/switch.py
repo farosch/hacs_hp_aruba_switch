@@ -160,10 +160,15 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
         
         if not self.coordinator.last_update_success:
             _LOGGER.debug(f"❌ Coordinator update failed for {self._attr_name}")
+            self._attr_available = False
+            # When the switch is offline, reflect that the entity cannot be toggled
+            self.async_write_ha_state()
             return
         
         if not self._coordinator.data:
             _LOGGER.debug(f"❌ No coordinator data for {self._attr_name}")
+            self._attr_available = False
+            self.async_write_ha_state()
             return
             
         try:
@@ -171,6 +176,7 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
             if not self._coordinator.data.get("available", False):
                 _LOGGER.debug(f"❌ Data not available for {self._attr_name}")
                 self._attr_available = False
+                self.async_write_ha_state()
                 return
             
             _LOGGER.debug(f"📊 Processing coordinator data for {self._attr_name}")
