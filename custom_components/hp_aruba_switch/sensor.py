@@ -33,8 +33,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         entities.append(ArubaPortPacketsInSensor(coordinator, port, config_entry.entry_id))
         entities.append(ArubaPortPacketsOutSensor(coordinator, port, config_entry.entry_id))
 
-    # Add switch info sensors
-    entities.append(ArubaSwitchFirmwareSensor(coordinator, config_entry.entry_id))
+    # Add switch status sensor
+    entities.append(ArubaSwitchStatusSensor(coordinator, config_entry.entry_id))
 
     _LOGGER.debug(f"Created {len(entities)} sensors using coordinator pattern")
     async_add_entities(entities, update_before_add=False)
@@ -148,34 +148,35 @@ class ArubaPortActivitySensor(CoordinatorEntity, SensorEntity):
         }
 
 
-class ArubaSwitchFirmwareSensor(CoordinatorEntity, SensorEntity):
-    """Sensor for switch firmware version."""
+class ArubaSwitchStatusSensor(CoordinatorEntity, SensorEntity):
+    """Sensor for switch status (online/offline)."""
     
     def __init__(self, coordinator, entry_id):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._entry_id = entry_id
-        self._attr_name = f"Switch {coordinator.host} Firmware"
-        self._attr_unique_id = f"{coordinator.host}_firmware"
-        self._attr_icon = "mdi:chip"
+        self._attr_name = f"Switch {coordinator.host} Status"
+        self._attr_unique_id = f"{coordinator.host}_status"
+        self._attr_icon = "mdi:lan-connect"
         
     @property
     def state(self):
         """Return the state of the sensor."""
-        if not self.coordinator.data or not self.coordinator.data.get("available"):
-            return "unknown"
-            
-        # Get version data from coordinator live data
-        version_data = self.coordinator.data.get("version_info", {})
-        _LOGGER.debug(f"🔍 Firmware sensor: version_data = {version_data}")
-        if version_data:
-            return version_data.get("firmware_version", "unknown")
-        return "unknown"
+        return "online" if self.coordinator.last_update_success else "offline"
         
     @property
     def available(self):
         """Return if entity is available."""
-        return self.coordinator.last_update_success
+        # Status sensor is always available to show online/offline
+        return True
+        
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return {
+            "host": self.coordinator.host,
+            "last_successful_update": getattr(self.coordinator, '_last_successful_connection', None),
+        }
         
     @property
     def device_info(self):
