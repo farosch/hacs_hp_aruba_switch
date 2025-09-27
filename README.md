@@ -25,6 +25,12 @@ A Home Assistant custom integration that provides control over HP/Aruba switch p
 - Configurable update intervals
 - Error handling and automatic retry logic
 
+### 🔄 **Reliability & Monitoring**
+- Automatic offline detection with entity unavailability
+- Switch connectivity status sensor
+- Smart recovery when switch comes back online
+- Clear logging for troubleshooting network issues
+
 ## Supported Devices
 
 This integration works with HP/Aruba switches that support SSH access, including:
@@ -42,9 +48,28 @@ This integration works with HP/Aruba switches that support SSH access, including
 - Valid administrator credentials
 - Network connectivity between Home Assistant and the switch
 
+## Architecture & Performance
+
+The integration uses a **single SSH session** architecture for optimal performance:
+
+- **Centralized Coordinator**: One coordinator manages all switch communication
+- **Bulk Data Collection**: Every 30 seconds, executes 4 SSH commands to collect data for ALL ports
+- **Efficient Caching**: All entities read from shared cache - no individual SSH calls
+- **Switch Protection**: Maximum 1 concurrent SSH session prevents switch overload
+- **Staggered Updates**: Entities update at different intervals to spread load
+- **Smart Recovery**: Automatic reconnection and offline detection
+
+This design ensures reliable operation even with 50+ entities without overwhelming the switch or network.
+
 ## Installation
 
 ### HACS (Recommended)
+
+#### Use My Home Assistant link
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=hp_aruba_switch)
+
+#### Use HACS manually
 
 1. Open HACS in Home Assistant
 2. Go to "Integrations"
@@ -91,6 +116,15 @@ After successful configuration, the integration creates the following entities:
 For each port (e.g., port 1):
 - `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port control
 - `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_poe_1` - PoE control
+
+### Monitoring Entities
+- `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_connectivity` - Switch online/offline status
+- `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1_link` - Port link status (for each port)
+
+### Device Information Sensors
+- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_firmware_version` - Switch firmware version
+- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_model` - Switch model information
+- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_serial_number` - Switch serial number
 
 All entities are automatically created and registered in Home Assistant with proper device information.
 

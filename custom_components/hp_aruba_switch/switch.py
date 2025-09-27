@@ -3,23 +3,22 @@ import asyncio
 import paramiko
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import Entity
-from .const import DOMAIN
-from .ssh_manager import get_ssh_manager
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from .const import DOMAIN, CONF_REFRESH_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up Aruba switch from a config entry."""
     _LOGGER.debug("HP/Aruba Switch integration starting setup")
-    host = config_entry.data["host"]
-    username = config_entry.data["username"]
-    password = config_entry.data["password"]
-    ssh_port = config_entry.data.get("ssh_port", 22)
+    
+    # Get the coordinator from the integration setup
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    
     exclude_ports_str = config_entry.data.get("exclude_ports", "")
     exclude_poe_str = config_entry.data.get("exclude_poe", "")
-    
-    # Get configured port count (default to 24 if not set)
     port_count = config_entry.data.get("port_count", 24)
+    
     _LOGGER.debug(f"Using configured port count: {port_count}")
     _LOGGER.debug(f"Config entry data: {config_entry.data}")
     
@@ -32,44 +31,31 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     _LOGGER.debug(f"Generated {len(ports)} ports for switch setup")
     entities = []
 
-    # Test SSH connectivity during setup
-    ssh_manager = get_ssh_manager(host, username, password, ssh_port)
-    test_result = await ssh_manager.execute_command("show version", timeout=10)
-    _LOGGER.info(f"SSH connectivity test for {host}: {'SUCCESS' if test_result else 'FAILED'}")
-    if test_result:
-        _LOGGER.debug(f"Switch version info: {repr(test_result[:200])}")  # Log first 200 chars
-
     for port in ports:
         # Add port switch entity (if not excluded)
         if port not in exclude_ports:
-            entities.append(ArubaSwitch(host, username, password, ssh_port, port, False, config_entry.entry_id))
+            entities.append(ArubaSwitch(coordinator, port, False, config_entry.entry_id))
         
         # Add PoE switch entity (if not excluded)
         if port not in exclude_poe:
-            entities.append(ArubaSwitch(host, username, password, ssh_port, port, True, config_entry.entry_id))
+            entities.append(ArubaSwitch(coordinator, port, True, config_entry.entry_id))
 
-    async_add_entities(entities, update_before_add=True)
+    async_add_entities(entities, update_before_add=False)
 
 
-class ArubaSwitch(SwitchEntity):
+class ArubaSwitch(CoordinatorEntity, SwitchEntity):
     """Representation of an Aruba switch port."""
     
-    # Reduce update frequency to avoid overwhelming the switch
-    entity_registry_enabled_default = True
-    
-    def __init__(self, host, username, password, ssh_port, port, is_poe, entry_id):
+    def __init__(self, coordinator, port, is_poe, entry_id):
         """Initialize the switch."""
-        self._host = host
-        self._username = username
-        self._password = password
-        self._ssh_port = ssh_port
+        super().__init__(coordinator)
+        self._coordinator = coordinator
         self._port = port
         self._is_poe = is_poe
         self._entry_id = entry_id
         self._is_on = False
-        self._available = True
         self._attr_name = f"Port {port} {'PoE' if is_poe else ''}".strip()
-        self._attr_unique_id = f"{host}_{port}_{'poe' if is_poe else 'port'}"
+        self._attr_unique_id = f"{coordinator.host}_{port}_{'poe' if is_poe else 'port'}"
         
         # Set appropriate icons for different entity types
         if is_poe:
@@ -77,15 +63,20 @@ class ArubaSwitch(SwitchEntity):
         else:
             self._attr_icon = "mdi:ethernet"
             
-        self._ssh_manager = get_ssh_manager(host, username, password, ssh_port)
-        self._last_update = 0
-        self._update_interval = 35  # Reduced since bulk queries are more efficient
-        
-        # Stagger updates to prevent simultaneous cache refreshes
-        # Use port number and type to create different offsets
-        import hashlib
-        offset_hash = hashlib.md5(f"{port}_{is_poe}".encode()).hexdigest()
-        self._update_offset = int(offset_hash[:2], 16) % 15  # 0-14 second offset (reduced)
+        # Initialize extra state attributes to expose all port data
+        self._attr_extra_state_attributes = {
+            "port_number": port,
+            "link_status": "unknown",
+            "link_speed": "unknown", 
+            "duplex": "unknown",
+            "auto_negotiation": "unknown",
+            "cable_type": "unknown",
+            "bytes_in": 0,
+            "bytes_out": 0,
+            "packets_in": 0,
+            "packets_out": 0,
+            "last_update": "never"
+        }
 
     @property
     def name(self):
@@ -100,20 +91,28 @@ class ArubaSwitch(SwitchEntity):
     @property
     def is_on(self):
         """Return true if switch is on."""
+        _LOGGER.debug(f"🔍 is_on property called for {self._attr_name}: {self._is_on}")
         return self._is_on
 
     @property
     def available(self):
         """Return if entity is available."""
-        return self._available
+        available = self.coordinator.last_update_success and getattr(self, '_attr_available', True)
+        _LOGGER.debug(f"🔍 available property called for {self._attr_name}: {available}")
+        return available
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        return self._attr_extra_state_attributes
 
     @property
     def device_info(self):
         """Return device information."""
         return {
-            "identifiers": {(DOMAIN, self._host)},
-            "name": f"Switch {self._host}",
-            "manufacturer": "Aruba",
+            "identifiers": {(DOMAIN, self._coordinator.host)},
+            "name": f"Switch {self._coordinator.host}",
+            "manufacturer": "Aruba", 
             "model": "Switch",
         }
 
@@ -125,19 +124,16 @@ class ArubaSwitch(SwitchEntity):
             command = f"configure\ninterface {self._port}\nenable\nexit\nwrite mem\nexit"
         
         _LOGGER.debug(f"Executing turn_on command for {self._attr_name}: {command}")
-        result = await self._ssh_manager.execute_command(command)
+        result = await self._coordinator.ssh_manager.execute_command(command)
         _LOGGER.debug(f"Turn_on result for {self._attr_name}: {repr(result)}")
         
         if result is not None:
             self._is_on = True
-            self._available = True
-            # Force a state refresh from the switch
+            # Force a coordinator refresh to get updated data
             await asyncio.sleep(1)  # Wait for switch to process
-            await self.async_update()
-            self.async_write_ha_state()
+            await self._coordinator.async_request_refresh()
         else:
-            self._available = False
-            self.async_write_ha_state()
+            _LOGGER.warning(f"Failed to turn on {self._attr_name} - switch may be offline")
 
     async def async_turn_off(self, **kwargs):
         """Turn the switch off."""
@@ -147,58 +143,116 @@ class ArubaSwitch(SwitchEntity):
             command = f"configure\ninterface {self._port}\ndisable\nexit\nwrite mem\nexit"
         
         _LOGGER.debug(f"Executing turn_off command for {self._attr_name}: {command}")
-        result = await self._ssh_manager.execute_command(command)
+        result = await self._coordinator.ssh_manager.execute_command(command)
         _LOGGER.debug(f"Turn_off result for {self._attr_name}: {repr(result)}")
         
         if result is not None:
             self._is_on = False
-            self._available = True
-            # Force a state refresh from the switch
+            # Force a coordinator refresh to get updated data
             await asyncio.sleep(1)  # Wait for switch to process
-            await self.async_update()
-            self.async_write_ha_state()
+            await self._coordinator.async_request_refresh()
         else:
-            self._available = False
-            self.async_write_ha_state()
+            _LOGGER.warning(f"Failed to turn off {self._attr_name} - switch may be offline")
 
-    async def async_update(self):
-        """Update the switch state using bulk queries for better performance."""
-        import time
-        current_time = time.time()
+    def _handle_coordinator_update(self):
+        """Handle updated data from the coordinator."""
+        _LOGGER.debug(f"🔄 Switch entity update called for {self._attr_name}")
         
-        # Calculate time since last update with staggered offset
-        time_since_update = current_time - (self._last_update + self._update_offset)
-        
-        # Only update if enough time has passed
-        if time_since_update < self._update_interval:
+        if not self.coordinator.last_update_success:
+            _LOGGER.debug(f"❌ Coordinator update failed for {self._attr_name}")
             return
         
-        self._last_update = current_time
-        
-        try:
-            # Use bulk query method instead of individual queries
-            status = await self._ssh_manager.get_port_status(self._port, self._is_poe)
-            _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} status: {status}")
+        if not self._coordinator.data:
+            _LOGGER.debug(f"❌ No coordinator data for {self._attr_name}")
+            return
             
-            if status:
-                self._available = True
-                if self._is_poe:
-                    # Parse PoE status from bulk query
-                    power_enable = status.get("power_enable", False)
-                    poe_status = status.get("poe_status", False)
-                    self._is_on = power_enable and poe_status
-                    _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status}, final_state={self._is_on}")
-                else:
-                    # Parse interface status from bulk query
-                    # For switch ports, "on" means administratively enabled, regardless of link status
-                    port_enabled = status.get("port_enabled", False)
-                    link_up = status.get("link_status", "down").lower() == "up"
-                    self._is_on = port_enabled  # Only check if port is administratively enabled
-                    _LOGGER.debug(f"Interface port {self._port}: port_enabled={port_enabled}, link_up={link_up}, final_state={self._is_on}")
+        try:
+            # Check if data is available
+            if not self._coordinator.data.get("available", False):
+                _LOGGER.debug(f"❌ Data not available for {self._attr_name}")
+                self._attr_available = False
+                return
+            
+            _LOGGER.debug(f"📊 Processing coordinator data for {self._attr_name}")
+            _LOGGER.debug(f"📊 Coordinator data keys: {list(self._coordinator.data.keys())}")
+                
+            # Read from the live data that coordinator fetched
+            interfaces = self._coordinator.data.get("interfaces", {})
+            statistics = self._coordinator.data.get("statistics", {})
+            link_details = self._coordinator.data.get("link_details", {})
+            poe_ports = self._coordinator.data.get("poe_ports", {})
+            
+            _LOGGER.debug(f"📊 Available data - interfaces: {len(interfaces)}, stats: {len(statistics)}, links: {len(link_details)}, poe: {len(poe_ports)}")
+            
+            status = interfaces.get(self._port, {})
+            port_statistics = statistics.get(self._port, {})  
+            port_link_details = link_details.get(self._port, {})
+            
+            if self._is_poe:
+                # Get PoE status from live data
+                poe_status = poe_ports.get(self._port, {})
+                status.update(poe_status)  # Merge PoE data with interface data
+            
+            _LOGGER.debug(f"Port {self._port} {'PoE' if self._is_poe else ''} - live status: {status}, stats: {port_statistics}, link: {port_link_details}")
+            
+            # Update entity state based on live data
+            if self._is_poe:
+                # Parse PoE status from cached data
+                power_enable = status.get("power_enable", False)
+                poe_status_value = status.get("poe_status", "off")
+                
+                # PoE is considered "on" if power is enabled and status indicates active power delivery
+                poe_active = False
+                if power_enable and isinstance(poe_status_value, str):
+                    poe_active = poe_status_value.lower() in ["delivering", "searching", "on", "enabled"]
+                elif power_enable and isinstance(poe_status_value, bool):
+                    poe_active = poe_status_value  # Legacy boolean support
+                
+                self._is_on = poe_active
+                _LOGGER.debug(f"PoE port {self._port}: power_enable={power_enable}, poe_status={poe_status_value}, final_state={self._is_on}")
             else:
-                self._available = False
-                _LOGGER.debug(f"No status data received for port {self._port} {'PoE' if self._is_poe else ''}")
+                # Parse interface status from cached data
+                port_enabled = status.get("port_enabled", False)
+                link_up = status.get("link_status", "down").lower() == "up"
+                self._is_on = port_enabled  # Only check if port is administratively enabled
+                _LOGGER.debug(f"Interface port {self._port}: port_enabled={port_enabled}, link_up={link_up}, final_state={self._is_on}")
+            
+            # Update all attributes with comprehensive port information
+            import datetime
+            self._attr_extra_state_attributes.update({
+                "port_number": self._port,
+                "link_status": "up" if port_link_details.get("link_up", False) else "down",
+                "link_speed": port_link_details.get("link_speed", "unknown"),
+                "duplex": port_link_details.get("duplex", "unknown"),
+                "auto_negotiation": port_link_details.get("auto_negotiation", "unknown"),
+                "cable_type": port_link_details.get("cable_type", "unknown"),
+                "bytes_in": port_statistics.get("bytes_rx", 0),
+                "bytes_out": port_statistics.get("bytes_tx", 0),
+                "packets_in": port_statistics.get("unicast_rx", 0),
+                "packets_out": port_statistics.get("unicast_tx", 0),
+                "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            # Add type-specific attributes
+            if self._is_poe:
+                self._attr_extra_state_attributes.update({
+                    "power_enable": status.get("power_enable", False),
+                    "poe_status": status.get("poe_status", False)
+                })
+            else:
+                self._attr_extra_state_attributes.update({
+                    "port_enabled": status.get("port_enabled", False),
+                    "admin_status": "enabled" if status.get("port_enabled", False) else "disabled"
+                })
+            
+            # Mark entity as available
+            self._attr_available = True
+            _LOGGER.debug(f"✅ Successfully updated {self._attr_name} - is_on: {self._is_on}")
+            
+            # Notify Home Assistant of state change
+            self.async_write_ha_state()
                 
         except Exception as e:
-            _LOGGER.warning(f"Failed to update {self._attr_name}: {e}")
-            self._available = False
+            _LOGGER.warning(f"Failed to update {self._attr_name} from coordinator: {e}")
+            import traceback
+            _LOGGER.debug(f"Full traceback: {traceback.format_exc()}")

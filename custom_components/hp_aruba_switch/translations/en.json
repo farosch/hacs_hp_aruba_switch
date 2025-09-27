@@ -11,8 +11,7 @@
           "ssh_port": "SSH Port (default: 22)",
           "port_count": "Number of ports (1-48, default: 24)",
           "exclude_ports": "Exclude ports (comma-separated, e.g., 1,24)",
-          "exclude_poe": "Exclude PoE ports (comma-separated, e.g., 23,24)",
-          "refresh_interval": "Refresh interval in seconds (10-300, default: 30)"
+          "exclude_poe": "Exclude PoE ports (comma-separated, e.g., 23,24)"
         }
       }
     },
@@ -23,28 +22,6 @@
     },
     "abort": {
       "already_configured": "Device is already configured"
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Configure HP/Aruba Switch Options",
-        "description": "Update your HP/Aruba switch configuration. Changes will take effect on the next refresh cycle.\n\n⚠️ Note: Host cannot be changed here. To connect to a different switch, delete and re-add the integration.",
-        "data": {
-          "username": "Username",
-          "password": "Password", 
-          "ssh_port": "SSH Port (default: 22)",
-          "port_count": "Number of ports (1-48, default: 24)",
-          "exclude_ports": "Exclude ports (comma-separated, e.g., 1,24)",
-          "exclude_poe": "Exclude PoE ports (comma-separated, e.g., 23,24)",
-          "refresh_interval": "Refresh interval in seconds (10-300, default: 30)"
-        }
-      }
-    },
-    "error": {
-      "cannot_connect": "Failed to connect to the switch with new credentials. Please check the username and password.",
-      "invalid_auth": "Invalid authentication with new credentials. Please check your username and password.",
-      "unknown": "Unexpected error occurred while updating configuration. Please check the logs for more details."
     }
   },
   "entity": {
