@@ -105,8 +105,10 @@ This design ensures reliable operation even with 50+ entities without overwhelmi
 | Host | Yes | - | IP address or hostname of the switch |
 | Username | Yes | - | Administrator username |
 | Password | Yes | - | Administrator password |
-| SSH Port | No | 22 | SSH port number |
+| SSH Port | Yes | 22 | SSH port number |
+| Ports | Yes | - | Amount of Ports (e.g., "24") |
 | Exclude Ports | No | - | Ports to exclude (e.g., "1,24") |
+| Exclude PoE | No | - | Ports to exclude (e.g., "1,24") |
 
 ## Entities Created
 
@@ -272,10 +274,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/farosch/hacs_hp_aruba_switch/issues)
 - **Discussions**: [Home Assistant Community](https://community.home-assistant.io/)
-
----
-
-**Note**: This integration requires SSH access to your switch. Ensure you understand the security implications and follow your organization's security policies.
 
 <!-- Badge Definitions -->
 [releases-shield]: https://img.shields.io/github/release/farosch/hacs_hp_aruba_switch.svg?style=for-the-badge
