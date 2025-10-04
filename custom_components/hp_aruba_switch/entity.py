@@ -17,13 +17,26 @@ class ArubaSwitchEntity(CoordinatorEntity):
 
     @property
     def device_info(self) -> Dict[str, Any]:
-        """Return device information."""
-        return {
+        """Return device information with enhanced details."""
+        device = {
             "identifiers": {(DOMAIN, self.coordinator.host)},
             "name": f"Switch {self.coordinator.host}",
             "manufacturer": "Aruba",
-            "model": "Switch",
+            "model": self.coordinator.model,
         }
+        
+        # Add firmware version if available
+        if self.coordinator.firmware and self.coordinator.firmware != "Unknown":
+            device["sw_version"] = self.coordinator.firmware
+        
+        # Add serial number if available
+        if self.coordinator.serial_number and self.coordinator.serial_number != "Unknown":
+            device["serial_number"] = self.coordinator.serial_number
+        
+        # Add configuration URL
+        device["configuration_url"] = f"https://{self.coordinator.host}"
+        
+        return device
 
     @property
     def available(self) -> bool:

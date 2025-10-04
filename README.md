@@ -4,6 +4,11 @@
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]][license-url]
 
+> **⚠️ BREAKING CHANGES IN v1.0.8**  
+> This release includes major architectural improvements that **WILL BREAK existing installations**.  
+> **All entities will be recreated with new IDs.** You will need to update your dashboards, automations, and scripts.  
+> See [RELEASE_NOTES.md](RELEASE_NOTES.md) for migration instructions.
+
 A Home Assistant custom integration that provides control over HP/Aruba switch ports and PoE management through SSH connectivity.
 
 ## 🌟 **Key Features**
@@ -248,10 +253,11 @@ show power-over-ethernet
 
 ## 🎯 **Performance & Reliability**
 
-- **Update Intervals**: Switch entities update every 35 seconds with intelligent staggering
-- **Connection Limits**: Maximum 3 concurrent SSH connections
-- **Staggered Updates**: Entities update with random offsets to prevent overload
-- **Timeout Settings**: Optimized for network switches (8-second command timeout)
+- **Update Intervals**: Switch entities update every 30 seconds
+- **Connection Limits**: Single coordinator per switch
+- **Dynamic Entity Creation**: Only for detected ports
+- **Bulk State Calculation**: Pre-calculated states for performance
+- **Lazy Loading**: Non-critical entities loaded after startup
 
 ## Languages Supported
 

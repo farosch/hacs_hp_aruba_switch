@@ -48,25 +48,29 @@
     }
   },
   "entity": {
-    "switch": {
-      "port": {
+    "sensor": {
+      "port_statistics": {
         "name": "Port {port}"
       },
-      "poe": {
-        "name": "PoE {port}"
-      }
-    },
-    "sensor": {
-      "activity": {
-        "name": "Port {port} Activity"
+      "port_bytes_in": {
+        "name": "Port {port} Traffic In"
       },
-      "diagnostics": {
-        "name": "Switch Diagnostics"
+      "port_bytes_out": {
+        "name": "Port {port} Traffic Out"
+      },
+      "switch_status": {
+        "name": "Switch Status"
       }
     },
-    "binary_sensor": {
-      "link": {
-        "name": "Port {port} Link"
+    "select": {
+      "port_control": {
+        "name": "Port {port} Control",
+        "state": {
+          "enabled": "Enabled",
+          "disabled": "Disabled",
+          "enabled_poe_off": "Enabled (PoE Off)",
+          "enabled_poe_on": "Enabled (PoE On)"
+        }
       }
     }
   }

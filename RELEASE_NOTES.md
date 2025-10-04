@@ -1,15 +1,20 @@
 # Release Notes
 
-## Version 1.0.8 - Code Quality Improvements
+## Version 1.0.8 - Major Architecture Overhaul ⚠️ BREAKING CHANGES
 **October 4, 2025**
 
-#### **Major Code Refactoring** 🔧
-- Comprehensive code refactoring for improved maintainability and performance
-- Eliminated code duplication with new base entity class
-- Added extensive type hints (95% coverage)
-- Fixed critical platform unloading bug
-- Improved debug logging and exception handling
-- Performance optimizations throughout
+> **⚠️ WARNING: BREAKING CHANGES**  
+> **This version requires a complete reinstall:**
+> This release completely restructures entity handling for massive performance improvements.  
+> **ALL ENTITIES WILL BE RECREATED WITH NEW IDS.**  
+> Backup your automation, dashboards and configuration then remove the integration and reinstall it.
+
+#### Improvements
+- Consolidated port sensors into multi-attribute sensor
+- Combined port + PoE switches into single select entity per port
+- Faster startup time
+- Restore entity state after restart
+- Better entity naming with has_entity_name pattern
 
 ---
 
