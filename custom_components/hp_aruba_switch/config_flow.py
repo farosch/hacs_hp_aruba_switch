@@ -78,86 +78,67 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return ArubaSwitchOptionsFlowHandler(config_entry)
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial step - connection details and port count."""
+        """Single step: connection details, port count, and dynamic exclusion checkboxes."""
         errors = {}
-        
-        if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-                # Store connection data for next step
-                self._data = user_input.copy()
-                # Log initialization information for the user
-                _LOGGER.info(f"HP/Aruba Switch integration configured for {user_input[CONF_HOST]}. "
-                           "Switch controls will be available within 1 minute. Port activity sensors "
-                           "will initialize over the next 2-3 minutes with staggered updates to "
-                           "avoid overwhelming the switch.")
-                # Move to port exclusion step
-                return await self.async_step_port_exclusion()
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+        # Use previous input or defaults
+        data = user_input or {}
+        port_count = int(data.get(CONF_PORT_COUNT, 24))
 
-        # UI form for connection details
+        # Build dynamic schema
+        schema_dict = {
+            vol.Required(CONF_HOST, default=data.get(CONF_HOST, "")): str,
+            vol.Required(CONF_USERNAME, default=data.get(CONF_USERNAME, "")): str,
+            vol.Required(CONF_PASSWORD, default=data.get(CONF_PASSWORD, "")): str,
+            vol.Optional(CONF_SSH_PORT, default=data.get(CONF_SSH_PORT, 22)): int,
+            vol.Optional(CONF_PORT_COUNT, default=port_count): int,
+            vol.Optional(CONF_REFRESH_INTERVAL, default=data.get(CONF_REFRESH_INTERVAL, 30)): vol.All(int, vol.Range(min=10, max=300)),
+        }
+        # Add checkboxes for port exclusion
+        for port_num in range(1, port_count + 1):
+            schema_dict[vol.Optional(f"exclude_port_{port_num}", default=data.get(f"exclude_port_{port_num}", False))] = bool
+        for port_num in range(1, port_count + 1):
+            schema_dict[vol.Optional(f"exclude_poe_{port_num}", default=data.get(f"exclude_poe_{port_num}", False))] = bool
+
+        if user_input is not None:
+            # If required fields are present, validate connection
+            required_fields = [CONF_HOST, CONF_USERNAME, CONF_PASSWORD]
+            if all(data.get(f) for f in required_fields):
+                try:
+                    info = await validate_input(self.hass, data)
+                    # Collect exclusions
+                    exclude_ports = [str(i) for i in range(1, port_count + 1) if data.get(f"exclude_port_{i}")]
+                    exclude_poe = [str(i) for i in range(1, port_count + 1) if data.get(f"exclude_poe_{i}")]
+                    entry_data = {
+                        CONF_HOST: data[CONF_HOST],
+                        CONF_USERNAME: data[CONF_USERNAME],
+                        CONF_PASSWORD: data[CONF_PASSWORD],
+                        CONF_SSH_PORT: int(data.get(CONF_SSH_PORT, 22)),
+                        CONF_PORT_COUNT: port_count,
+                        CONF_REFRESH_INTERVAL: int(data.get(CONF_REFRESH_INTERVAL, 30)),
+                        CONF_EXCLUDE_PORTS: ",".join(exclude_ports),
+                        CONF_EXCLUDE_POE: ",".join(exclude_poe),
+                    }
+                    return self.async_create_entry(
+                        title=f"Aruba Switch ({entry_data[CONF_HOST]}:{entry_data[CONF_SSH_PORT]})",
+                        data=entry_data
+                    )
+                except CannotConnect:
+                    errors["base"] = "cannot_connect"
+                except InvalidAuth:
+                    errors["base"] = "invalid_auth"
+                except Exception:
+                    _LOGGER.exception("Unexpected exception")
+                    errors["base"] = "unknown"
+            # If port count changed, just re-render form with new checkboxes
+            # (No error, just update form)
+
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_HOST): str,
-                vol.Required(CONF_USERNAME): str,
-                vol.Required(CONF_PASSWORD): str,
-                vol.Optional(CONF_SSH_PORT, default=22): int,
-                vol.Optional(CONF_PORT_COUNT, default=24): int,
-                vol.Optional(CONF_REFRESH_INTERVAL, default=30): vol.All(int, vol.Range(min=10, max=300)),
-            }),
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
 
-    async def async_step_port_exclusion(self, user_input=None):
-        """Handle the port exclusion step with checkboxes."""
-        if user_input is not None:
-            # Convert checkbox selections to comma-separated strings
-            exclude_ports = []
-            exclude_poe = []
-            
-            for key, value in user_input.items():
-                if key.startswith("exclude_port_") and value:
-                    port_num = key.replace("exclude_port_", "")
-                    exclude_ports.append(port_num)
-                elif key.startswith("exclude_poe_") and value:
-                    port_num = key.replace("exclude_poe_", "")
-                    exclude_poe.append(port_num)
-            
-            # Add exclusions to the stored data
-            self._data[CONF_EXCLUDE_PORTS] = ",".join(exclude_ports)
-            self._data[CONF_EXCLUDE_POE] = ",".join(exclude_poe)
-            
-            # Create the config entry
-            return self.async_create_entry(
-                title=f"Aruba Switch ({self._data[CONF_HOST]}:{self._data.get(CONF_SSH_PORT, 22)})",
-                data=self._data
-            )
-        
-        # Generate checkbox schema based on port count
-        port_count = self._data.get(CONF_PORT_COUNT, 24)
-        schema_dict = {}
-        
-        # Create checkboxes for port exclusion
-        # Note: Labels will be dynamically shown as "Port 1", "Port 2", etc. in the UI
-        for port_num in range(1, port_count + 1):
-            schema_dict[vol.Optional(f"exclude_port_{port_num}", default=False)] = bool
-        
-        # Create checkboxes for PoE exclusion
-        # Note: Labels will be dynamically shown as "Port 1 (PoE)", "Port 2 (PoE)", etc. in the UI
-        for port_num in range(1, port_count + 1):
-            schema_dict[vol.Optional(f"exclude_poe_{port_num}", default=False)] = bool
-        
-        return self.async_show_form(
-            step_id="port_exclusion",
-            data_schema=vol.Schema(schema_dict),
-        )
+    # REMOVED: async_step_port_exclusion (all logic now in async_step_user)
 
 
 class ArubaSwitchOptionsFlowHandler(config_entries.OptionsFlow):
