@@ -1,4 +1,3 @@
-HP-2530-24G-PoEP# show version
 
 Image stamp:    /ws/swbuildm/rel_yakima_qaoff/code/build/lakes(swbuildm_rel_yakima_qaoff_rel_yakima)
                 Feb 27 2019 22:56:36

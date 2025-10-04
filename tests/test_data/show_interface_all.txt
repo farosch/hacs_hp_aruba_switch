@@ -1,4 +1,3 @@
-HP-2530-24G-PoEP# show interface all
 
  Status and Counters - Port Counters for port 1
 

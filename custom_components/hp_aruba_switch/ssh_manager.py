@@ -229,69 +229,20 @@ class ArubaSSHManager:
 
 
     async def get_all_switch_data(self) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-        """Execute all commands (prefer single session, fall back to sequential) and parse the output.
+        """Execute all commands sequentially and parse each output independently.
+        
+        Each SSH command is executed individually and its output is sent to a dedicated parser.
+        This makes parsing logic cleaner and easier to test.
         
         Returns:
             Tuple of (interfaces, statistics, link_details, poe_ports, version_info) dictionaries.
         """
-        commands = [
-            "show interface all",
-            "show interface brief",
-            "show power-over-ethernet all",
-            "show version",
-        ]
-
-        async def _parse_combined_result(raw_output: str) -> tuple[dict, dict, dict, dict, dict]:
-            _LOGGER.debug(f"🔍 Starting to parse combined output for {self.host}")
-            loop = asyncio.get_event_loop()
-            parsed = await asyncio.wait_for(
-                loop.run_in_executor(None, self._parse_combined_output, raw_output, commands),
-                timeout=15.0,
-            )
-            _LOGGER.debug(f"✅ Parsing completed for {self.host}")
-            return parsed
-
-        # First attempt: execute all commands in a single session
-        combined_command = "\n".join(commands)
-        _LOGGER.debug(f"🔗 Executing combined commands in single session: {commands}")
-        combined_output = await self.execute_command(combined_command, timeout=30)
-
-        if combined_output:
-            _LOGGER.info(f"✅ Successfully executed {len(commands)} commands in single session for {self.host}")
-            _LOGGER.debug(f"📊 Combined output length: {len(combined_output)} characters")
-
-            try:
-                interfaces, statistics, link_details, poe_ports, version_info = await _parse_combined_result(combined_output)
-
-                if any([interfaces, statistics, link_details, poe_ports, version_info]):
-                    return interfaces, statistics, link_details, poe_ports, version_info
-
-                _LOGGER.warning(
-                    "⚠️ Combined parsing returned no usable data for %s, falling back to sequential execution",
-                    self.host,
-                )
-            except asyncio.TimeoutError:
-                _LOGGER.error(f"❌ Parsing timed out after 15s for {self.host} (combined output)")
-            except Exception as err:
-                _LOGGER.error(f"❌ Parsing combined output failed for {self.host}: {err}")
-        else:
-            _LOGGER.warning(f"❌ Combined command execution failed for {self.host}, falling back to sequential commands")
-
-        # Fallback: execute commands sequentially to ensure sensors still receive data
-        sequential_outputs: Dict[str, str] = {}
-        for cmd in commands:
-            _LOGGER.debug(f"� Executing fallback command '{cmd}' for {self.host}")
-            try:
-                output = await self.execute_command(cmd, timeout=20)
-            except Exception as err:  # pragma: no cover - defensive logging
-                _LOGGER.error(f"❌ Fallback command '{cmd}' failed for {self.host}: {err}")
-                continue
-
-            if not output:
-                _LOGGER.warning(f"⚠️ Fallback command '{cmd}' returned no data for {self.host}")
-                continue
-
-            sequential_outputs[cmd] = output
+        commands = {
+            "show interface all": self.parse_show_interface_all,
+            "show interface brief": self.parse_show_interface_brief,
+            "show power-over-ethernet all": self.parse_show_power_over_ethernet_all,
+            "show version": self.parse_show_version,
+        }
 
         interfaces: Dict[str, Any] = {}
         statistics: Dict[str, Any] = {}
@@ -299,43 +250,75 @@ class ArubaSSHManager:
         poe_ports: Dict[str, Any] = {}
         version_info: Dict[str, Any] = {}
 
-        if "show interface all" in sequential_outputs:
-            ifaces, stats, links = self._parse_interface_all_output(sequential_outputs["show interface all"])
-            interfaces.update(ifaces)
-            statistics.update(stats)
-            link_details.update(links)
+        # Execute each command and parse its output independently
+        for cmd, parser in commands.items():
+            _LOGGER.debug(f"📋 Executing command '{cmd}' for {self.host}")
+            try:
+                output = await self.execute_command(cmd, timeout=20)
+            except Exception as err:
+                _LOGGER.error(f"❌ Command '{cmd}' failed for {self.host}: {err}")
+                continue
 
-        if "show interface brief" in sequential_outputs:
-            brief_info = self._parse_interface_brief_output(sequential_outputs["show interface brief"])
-            for port, info in brief_info.items():
-                if port in link_details:
-                    link_details[port].update({
-                        "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
-                        "duplex": info["duplex"],
-                        "mode": info.get("mode", "unknown"),
-                        "mdi": info.get("mdi", "unknown"),
-                    })
-                else:
-                    link_details[port] = {
-                        "link_up": False,
-                        "port_enabled": False,
-                        "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
-                        "duplex": info["duplex"],
-                        "auto_negotiation": "unknown",
-                        "cable_type": "unknown",
-                        "mode": info.get("mode", "unknown"),
-                        "mdi": info.get("mdi", "unknown"),
-                    }
+            if not output:
+                _LOGGER.warning(f"⚠️ Command '{cmd}' returned no data for {self.host}")
+                continue
 
-        if "show power-over-ethernet all" in sequential_outputs:
-            poe_ports.update(self._parse_poe_output(sequential_outputs["show power-over-ethernet all"]))
-
-        if "show version" in sequential_outputs:
-            version_info.update(self._parse_version_output(sequential_outputs["show version"]))
+            # Parse the output using the dedicated parser
+            try:
+                loop = asyncio.get_event_loop()
+                result = await asyncio.wait_for(
+                    loop.run_in_executor(None, parser, output),
+                    timeout=10.0,
+                )
+                
+                # Merge results based on command type
+                if cmd == "show interface all":
+                    ifaces, stats, links = result
+                    interfaces.update(ifaces)
+                    statistics.update(stats)
+                    link_details.update(links)
+                    _LOGGER.debug(f"✅ Parsed interface all: {len(ifaces)} interfaces, {len(stats)} stats, {len(links)} links")
+                    
+                elif cmd == "show interface brief":
+                    brief_info = result
+                    # Merge brief info (speed/duplex) into link_details
+                    for port, info in brief_info.items():
+                        if port in link_details:
+                            link_details[port].update({
+                                "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                                "duplex": info["duplex"],
+                                "mode": info.get("mode", "unknown"),
+                                "mdi": info.get("mdi", "unknown"),
+                            })
+                        else:
+                            link_details[port] = {
+                                "link_up": False,
+                                "port_enabled": False,
+                                "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
+                                "duplex": info["duplex"],
+                                "auto_negotiation": "unknown",
+                                "cable_type": "unknown",
+                                "mode": info.get("mode", "unknown"),
+                                "mdi": info.get("mdi", "unknown"),
+                            }
+                    _LOGGER.debug(f"✅ Parsed interface brief: {len(brief_info)} interfaces")
+                    
+                elif cmd == "show power-over-ethernet all":
+                    poe_ports.update(result)
+                    _LOGGER.debug(f"✅ Parsed PoE: {len(result)} ports")
+                    
+                elif cmd == "show version":
+                    version_info.update(result)
+                    _LOGGER.debug(f"✅ Parsed version: {bool(result)}")
+                    
+            except asyncio.TimeoutError:
+                _LOGGER.error(f"❌ Parsing timed out for command '{cmd}' on {self.host}")
+            except Exception as err:
+                _LOGGER.error(f"❌ Parsing failed for command '{cmd}' on {self.host}: {err}")
 
         if any([interfaces, statistics, link_details, poe_ports, version_info]):
             _LOGGER.info(
-                "✅ Fallback sequential parsing succeeded for %s (interfaces=%d, stats=%d, links=%d, poe=%d, version=%s)",
+                "✅ Data collection succeeded for %s (interfaces=%d, stats=%d, links=%d, poe=%d, version=%s)",
                 self.host,
                 len(interfaces),
                 len(statistics),
@@ -345,181 +328,11 @@ class ArubaSSHManager:
             )
             return interfaces, statistics, link_details, poe_ports, version_info
 
-        _LOGGER.error(f"❌ Sequential fallback produced no usable data for {self.host}")
+        _LOGGER.error(f"❌ No usable data collected from {self.host}")
         return {}, {}, {}, {}, {}
     
-    def _parse_combined_output(self, output: str, commands: list) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-        """Parse the combined output from all commands.
-        
-        Args:
-            output: Raw combined output from all commands
-            commands: List of commands that were executed
-            
-        Returns:
-            Tuple of (interfaces, statistics, link_details, poe_ports, version_info) dictionaries.
-        """
-        _LOGGER.debug(f"Parsing combined output for {self.host} (length: {len(output)} chars)")
-        interfaces = {}
-        statistics = {}
-        link_details = {}
-        poe_ports = {}
-        version_info = {}
-        
-        # Split output by command boundaries - look for command echoes or patterns
-        _LOGGER.debug(f"Splitting output into command sections for {self.host}")
-        sections = self._split_output_by_commands(output, commands)
-        _LOGGER.debug(f"Split into {len(sections)} sections for {self.host}")
-        
-        for i, (cmd, section_output) in enumerate(sections.items()):
-            _LOGGER.debug(f"🔄 Processing section {i+1}/{len(sections)} for command '{cmd}' (length: {len(section_output)})")
-            
-            if "show interface all" in cmd:
-                # Parse interface status and statistics
-                _LOGGER.debug(f"📊 Starting interface all parsing")
-                ifaces, stats, links = self._parse_interface_all_output(section_output)
-                _LOGGER.debug(f"📈 Interface all completed: {len(ifaces)} interfaces, {len(stats)} stats, {len(links)} links")
-                interfaces.update(ifaces)
-                statistics.update(stats)
-                link_details.update(links)
-                
-            elif "show interface brief" in cmd:
-                # Parse brief interface info
-                _LOGGER.debug(f"📋 Starting interface brief parsing")
-                brief_info = self._parse_interface_brief_output(section_output)
-                _LOGGER.debug(f"📑 Interface brief completed: {len(brief_info)} interfaces")
-                # Merge brief info into link_details (only speed/duplex info)
-                for port, info in brief_info.items():
-                    if port in link_details:
-                        # Update existing link details with brief info (speed/duplex only)
-                        link_details[port].update({
-                            "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
-                            "duplex": info["duplex"],
-                            "mode": info.get("mode", "unknown"),
-                            "mdi": info.get("mdi", "unknown")
-                        })
-                    else:
-                        # Create new link details entry with speed/duplex from brief, defaults for others
-                        link_details[port] = {
-                            "link_up": False,  # Default, will be set by detailed parsing if available
-                            "port_enabled": False,  # Default, will be set by detailed parsing if available
-                            "link_speed": f"{info['link_speed_mbps']} Mbps" if info['link_speed_mbps'] > 0 else "unknown",
-                            "duplex": info["duplex"],
-                            "auto_negotiation": "unknown",
-                            "cable_type": "unknown",
-                            "mode": info.get("mode", "unknown"),
-                            "mdi": info.get("mdi", "unknown")
-                        }
-                        
-            elif "show power-over-ethernet all" in cmd:
-                # Parse PoE status
-                _LOGGER.debug(f"⚡ Starting PoE parsing")
-                poe_data = self._parse_poe_output(section_output)
-                _LOGGER.debug(f"🔌 PoE completed: {len(poe_data)} ports")
-                poe_ports.update(poe_data)
-                
-            elif "show version" in cmd:
-                # Parse version and firmware information
-                _LOGGER.debug(f"📟 Starting version parsing")
-                _LOGGER.debug(f"🔍 RAW VERSION OUTPUT: {repr(section_output)}")
-                version_data = self._parse_version_output(section_output)
-                _LOGGER.debug(f"📝 Version completed: {bool(version_data)}")
-                version_info.update(version_data)
-        
-        _LOGGER.debug(f"Parsed from combined output: {len(interfaces)} interfaces, {len(statistics)} statistics, "
-                     f"{len(link_details)} link details, {len(poe_ports)} PoE ports, version info: {bool(version_info)}")
-        
-        return interfaces, statistics, link_details, poe_ports, version_info
     
-    def _split_output_by_commands(self, output: str, commands: list) -> Dict[str, str]:
-        """Split the combined output into sections for each command.
-        
-        Args:
-            output: Raw combined output
-            commands: List of commands to split by
-            
-        Returns:
-            Dictionary mapping command to its output section.
-        """
-        _LOGGER.debug(f"Splitting output for {self.host} ({len(commands)} commands)")
-        sections = {}
-        current_section = ""
-        current_command = None
-        
-        lines = output.split('\n')
-        _LOGGER.debug(f"Processing {len(lines)} lines for {self.host}")
-        
-        for line in lines:
-            line_stripped = line.strip()
-            
-            # Check if this line matches any of our commands (command echo)
-            matching_cmd = None
-            for cmd in commands:
-                if cmd.strip() in line_stripped:
-                    matching_cmd = cmd
-                    break
-            
-            if matching_cmd:
-                # Save previous section if we have one
-                if current_command and current_section:
-                    sections[current_command] = current_section.strip()
-                
-                # Start new section
-                current_command = matching_cmd
-                current_section = ""
-                _LOGGER.debug(f"Found command boundary for: {matching_cmd}")
-            else:
-                # Add line to current section
-                if current_command:
-                    current_section += line + "\n"
-        
-        # Save the last section
-        if current_command and current_section:
-            sections[current_command] = current_section.strip()
-        
-        # If splitting by command echo failed, try to split by output patterns
-        if not sections:
-            _LOGGER.debug("Command echo splitting failed, trying pattern-based splitting")
-            sections = self._split_by_output_patterns(output, commands)
-        
-        return sections
-    
-    def _split_by_output_patterns(self, output: str, commands: list) -> Dict[str, str]:
-        """Alternative splitting method based on output patterns.
-        
-        Args:
-            output: Raw combined output
-            commands: List of commands to split by
-            
-        Returns:
-            Dictionary mapping command to its output section.
-        """
-        sections = {}
-        
-        # Simple approach: split the output into roughly equal parts
-        lines = output.split('\n')
-        total_lines = len(lines)
-        
-        if total_lines < 10:  # Too short to split meaningfully
-            sections[commands[0]] = output
-            return sections
-        
-        # Rough estimation: divide output by number of commands
-        lines_per_cmd = total_lines // len(commands)
-        
-        for i, cmd in enumerate(commands):
-            start_line = i * lines_per_cmd
-            if i == len(commands) - 1:  # Last command gets remaining lines
-                end_line = total_lines
-            else:
-                end_line = (i + 1) * lines_per_cmd
-            
-            section_lines = lines[start_line:end_line]
-            sections[cmd] = '\n'.join(section_lines)
-            _LOGGER.debug(f"Pattern-based split for '{cmd}': lines {start_line}-{end_line}")
-        
-        return sections
-    
-    def _parse_interface_all_output(self, output: str) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    def parse_show_interface_all(self, output: str) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
         """Parse 'show interface all' output for interfaces, statistics, and link details.
         
         Args:
@@ -673,7 +486,7 @@ class ArubaSSHManager:
 
         return interfaces, statistics, link_details
     
-    def _parse_interface_brief_output(self, output: str) -> Dict[str, Dict[str, Any]]:
+    def parse_show_interface_brief(self, output: str) -> Dict[str, Dict[str, Any]]:
         """Parse 'show interface brief' output for speed/duplex data.
         
         Args:
@@ -751,7 +564,7 @@ class ArubaSSHManager:
         
         return brief_info
     
-    def _parse_poe_output(self, output: str) -> dict:
+    def parse_show_power_over_ethernet_all(self, output: str) -> dict:
         """Parse 'show power-over-ethernet all' output for PoE status."""
         poe_ports = {}
         current_port = None
@@ -834,7 +647,7 @@ class ArubaSSHManager:
         
         return poe_ports
 
-    def _parse_version_output(self, output: str) -> dict:
+    def parse_show_version(self, output: str) -> dict:
         """Parse 'show version' output for firmware and version information."""
         version_info = {}
         main_firmware_version = None
