@@ -159,8 +159,8 @@ async def test_real_switch():
     print("TEST: Real Switch Integration")
     print("="*60)
     
-    # Password with special characters - use raw string
-    password = r"SY=ojE3%'_s"
+    # Password with special characters - the = needs to be escaped with backslash
+    password = r"SY\=ojE3%'_s"
     manager = ArubaSSHManager("10.4.20.65", "manager", password, 22)
     
     try:
