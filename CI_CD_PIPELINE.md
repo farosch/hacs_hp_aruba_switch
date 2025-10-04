@@ -2,7 +2,20 @@
 
 ## Overview
 
-The HP/Aruba Switch integration uses GitHub Actions for automated testing, validation, and releasing. The pipeline consists of three independent workflows that work together to ensure code quality and proper Home Assistant/HACS compliance.
+The HP/Aruba Switch integration uses G### On Any Branch Push
+
+You should see **3 checks**:
+1. ✅ `Test and Release / test` - Unit tests with Python 3.13
+2. ✅ `Validate with hassfest / validate` - Home Assistant validation
+3. ✅ `Validate / validate-hacs` - HACS validation
+
+### On Main Branch Push
+
+You should see **4 checks**:
+1. ✅ `Test and Release / test` - Unit tests with Python 3.13
+2. ✅ `Validate with hassfest / validate` - Home Assistant validation
+3. ✅ `Validate / validate-hacs` - HACS validation
+4. ✅ `Test and Release / release` - Release creation (if all conditions met)r automated testing, validation, and releasing. The pipeline consists of three independent workflows that work together to ensure code quality and proper Home Assistant/HACS compliance.
 
 ## Workflow Architecture
 
@@ -15,17 +28,17 @@ The HP/Aruba Switch integration uses GitHub Actions for automated testing, valid
 **Jobs:**
 
 #### test
-Runs unit tests on Python 3.11 and 3.12 (matrix strategy = 2 test runs)
+Runs unit tests on Python 3.13 (Home Assistant's required version)
 
 **Steps:**
 1. Checkout code
-2. Set up Python environment
+2. Set up Python 3.13 environment
 3. Install dependencies (paramiko)
 4. Run unit tests with test data files
 5. Compile all Python files
 6. Validate manifest.json format
 
-**Purpose:** Ensure code quality and compatibility across Python versions.
+**Purpose:** Ensure code quality and compatibility with Home Assistant's Python version.
 
 #### release
 Creates GitHub release (only on main branch after tests pass)
@@ -192,7 +205,7 @@ These files contain real output from HP/Aruba switches for parser validation.
 ### CI Testing
 
 The CI pipeline:
-- Runs tests on Python 3.11 and 3.12
+- Runs tests on Python 3.13 (Home Assistant's required version)
 - Uses test data files (not real switch)
 - Validates Python syntax and compilation
 - Checks manifest.json structure
@@ -207,7 +220,7 @@ The workflow requires `contents: write` permission to create releases and tags.
 2. Developer updates `RELEASE_NOTES.md` with new features
 3. Developer commits and pushes to `main`
 4. GitHub Actions triggers:
-   - ✅ Tests run on Python 3.11 and 3.12
+   - ✅ Tests run on Python 3.13
    - ✅ All files compile successfully
    - ✅ manifest.json is valid
    - ✅ Hassfest validates Home Assistant compatibility
@@ -224,9 +237,8 @@ To ensure all validations pass before merging to main:
 1. Go to Repository Settings → Branches
 2. Add branch protection rule for `main`
 3. Enable "Require status checks to pass before merging"
-4. Select all 4 checks:
-   - `Test and Release / test (3.11)`
-   - `Test and Release / test (3.12)`
+4. Select all 3 checks:
+   - `Test and Release / test`
    - `Validate with hassfest / validate`
    - `Validate / validate-hacs`
 
@@ -283,7 +295,7 @@ This prevents merging code that fails any validation.
 
 ### Too Many Checks Running
 
-**Symptom:** More than 4-5 checks running on push.
+**Symptom:** More than 3-4 checks running on push.
 
 **Possible causes:**
 - Duplicate workflow files
