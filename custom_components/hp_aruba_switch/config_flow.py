@@ -145,10 +145,12 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema_dict = {}
         
         # Create checkboxes for port exclusion
+        # Note: Labels will be dynamically shown as "Port 1", "Port 2", etc. in the UI
         for port_num in range(1, port_count + 1):
             schema_dict[vol.Optional(f"exclude_port_{port_num}", default=False)] = bool
         
         # Create checkboxes for PoE exclusion
+        # Note: Labels will be dynamically shown as "Port 1 (PoE)", "Port 2 (PoE)", etc. in the UI
         for port_num in range(1, port_count + 1):
             schema_dict[vol.Optional(f"exclude_poe_{port_num}", default=False)] = bool
         
@@ -248,12 +250,14 @@ class ArubaSwitchOptionsFlowHandler(config_entries.OptionsFlow):
         schema_dict = {}
         
         # Create checkboxes for port exclusion with current values
+        # Note: Labels will be dynamically shown as "Port 1", "Port 2", etc. in the UI
         for port_num in range(1, port_count + 1):
             port_str = str(port_num)
             default_value = port_str in current_exclude_ports
             schema_dict[vol.Optional(f"exclude_port_{port_num}", default=default_value)] = bool
         
         # Create checkboxes for PoE exclusion with current values
+        # Note: Labels will be dynamically shown as "Port 1 (PoE)", "Port 2 (PoE)", etc. in the UI
         for port_num in range(1, port_count + 1):
             port_str = str(port_num)
             default_value = port_str in current_exclude_poe

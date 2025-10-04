@@ -10,10 +10,12 @@
           "password": "Password",
           "ssh_port": "Porta SSH (predefinita: 22)",
           "port_count": "Numero di porte (1-48, predefinita: 24)",
-          "exclude_ports": "Escludi porte (separate da virgole, es: 1,24)",
-          "exclude_poe": "Escludere porte PoE (separate da virgole, es: 23,24)",
           "refresh_interval": "Intervallo di aggiornamento in secondi (10-300, predefinito: 30)"
         }
+      },
+      "port_exclusion": {
+        "title": "Configurazione Esclusione Porte",
+        "description": "Seleziona quali porte escludere dall'integrazione. Le porte escluse non creeranno entità in Home Assistant.\n\n**Escludi dall'Integrazione**: Queste porte non appariranno affatto in Home Assistant.\n\n**Escludi dal Controllo PoE**: Queste porte appariranno ma senza opzioni di controllo PoE (usa per porte senza PoE)."
       }
     },
     "error": {
@@ -35,10 +37,12 @@
           "password": "Password",
           "ssh_port": "Porta SSH (predefinita: 22)",
           "port_count": "Numero di porte (1-48, predefinita: 24)",
-          "exclude_ports": "Escludi porte (separate da virgole, es: 1,24)",
-          "exclude_poe": "Escludere porte PoE (separate da virgole, es: 23,24)",
           "refresh_interval": "Intervallo di aggiornamento in secondi (10-300, predefinito: 30)"
         }
+      },
+      "port_exclusion": {
+        "title": "Configurazione Esclusione Porte",
+        "description": "Seleziona quali porte escludere dall'integrazione. Le porte escluse non creeranno entità in Home Assistant.\n\n**Escludi dall'Integrazione**: Queste porte non appariranno affatto in Home Assistant.\n\n**Escludi dal Controllo PoE**: Queste porte appariranno ma senza opzioni di controllo PoE (usa per porte senza PoE)."
       }
     },
     "error": {
