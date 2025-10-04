@@ -97,41 +97,27 @@ class ArubaPortSensor(ArubaSwitchEntity, SensorEntity, RestoreEntity):
     
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return comprehensive port statistics and details."""
+        """Expose all parser fields for this port as sensor attributes."""
         data = self._get_coordinator_data()
         if not data:
             return {}
-        
+
         statistics = data.get("statistics", {})
         link_details = data.get("link_details", {})
         interfaces = data.get("interfaces", {})
-        
+
         port_stats = statistics.get(self._port, {})
         port_link = link_details.get(self._port, {})
         port_interface = interfaces.get(self._port, {})
-        
-        attributes = {
-            # Link status
-            "port_enabled": port_link.get("port_enabled", False),
-            "link_up": port_link.get("link_up", False),
-            "link_speed": port_link.get("link_speed", "unknown"),
-            "duplex": port_link.get("duplex", "unknown"),
-            "auto_negotiation": port_link.get("auto_negotiation", "unknown"),
-            "cable_type": port_link.get("cable_type", "unknown"),
-            
-            # Traffic statistics
-            "bytes_in": port_stats.get("bytes_rx", 0),
-            "bytes_out": port_stats.get("bytes_tx", 0),
-            "packets_in": port_stats.get("unicast_rx", 0),
-            "packets_out": port_stats.get("unicast_tx", 0),
-            
-            # Activity calculation
-            "activity": self._calculate_activity(port_stats),
-            
-            # Link status from interface
-            "link_status": port_interface.get("link_status", "unknown"),
-        }
-        
+
+        # Merge all fields from all sources
+        attributes = {}
+        attributes.update(port_stats)
+        attributes.update(port_link)
+        attributes.update(port_interface)
+        # Add activity calculation
+        attributes["activity"] = self._calculate_activity(port_stats)
+
         return attributes
     
     def _calculate_activity(self, stats: Dict[str, Any]) -> str:

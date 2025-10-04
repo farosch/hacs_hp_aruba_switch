@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configuration du Commutateur HP/Aruba",
-        "description": "Entrez les détails de connexion pour votre commutateur HP/Aruba. Cette intégration fournit le contrôle des ports du commutateur et la gestion PoE via SSH.",
+        "description": "",
         "data": {
           "host": "Hôte (adresse IP ou nom d'hôte)",
           "username": "Nom d'utilisateur",
@@ -15,7 +15,7 @@
       },
       "port_exclusion": {
         "title": "Configuration d'Exclusion de Ports",
-        "description": "Sélectionnez les ports à exclure de l'intégration. Les ports exclus ne créeront pas d'entités dans Home Assistant.\n\n**Exclure de l'Intégration**: Ces ports n'apparaîtront pas du tout dans Home Assistant.\n\n**Exclure du Contrôle PoE**: Ces ports apparaîtront mais sans options de contrôle PoE (utiliser pour les ports sans PoE)."
+  "description": "",
       }
     },
     "error": {

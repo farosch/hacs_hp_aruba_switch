@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "HP/Aruba Switch Configuration",
-        "description": "Enter the connection details for your HP/Aruba switch. This integration provides control over switch ports, PoE management, and port activity monitoring through SSH.\n\n⚠️ Note: The integration may take 2-3 minutes to fully initialize all entities after adding. Switch controls will be available first, followed by port activity sensors.",
+  "description": "",
         "data": {
           "host": "Host (IP address or hostname)",
           "username": "Username",

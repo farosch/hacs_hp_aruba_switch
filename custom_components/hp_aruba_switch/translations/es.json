@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configuración de Switch HP/Aruba",
-        "description": "Ingrese los detalles de conexión para su switch HP/Aruba. Esta integración proporciona control de puertos del switch y gestión PoE a través de SSH.",
+          "description": "",
         "data": {
           "host": "Host (dirección IP o nombre de host)",
           "username": "Nombre de usuario",
