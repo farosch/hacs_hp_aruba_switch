@@ -10,8 +10,6 @@
           "password": "Hasło",
           "ssh_port": "Port SSH (domyślny: 22)",
           "port_count": "Liczba portów (1-48, domyślnie: 24)",
-          "exclude_ports": "Wyklucz porty (oddzielone przecinkami, np. 1,24)",
-          "exclude_poe": "Wyklucz porty PoE (oddzielone przecinkami, np. 23,24)",
           "refresh_interval": "Interwał odświeżania w sekundach (10-300, domyślnie: 30)"
         }
       }
@@ -35,8 +33,6 @@
           "password": "Hasło",
           "ssh_port": "Port SSH (domyślny: 22)",
           "port_count": "Liczba portów (1-48, domyślnie: 24)",
-          "exclude_ports": "Wyklucz porty (oddzielone przecinkami, np. 1,24)",
-          "exclude_poe": "Wyklucz porty PoE (oddzielone przecinkami, np. 23,24)",
           "refresh_interval": "Interwał odświeżania w sekundach (10-300, domyślnie: 30)"
         }
       }

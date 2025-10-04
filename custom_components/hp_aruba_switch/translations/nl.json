@@ -10,8 +10,6 @@
           "password": "Wachtwoord",
           "ssh_port": "SSH-poort (standaard: 22)",
           "port_count": "Aantal poorten (1-48, standaard: 24)",
-          "exclude_ports": "Poorten uitsluiten (kommagescheiden, bijv. 1,24)",
-          "exclude_poe": "PoE-poorten uitsluiten (kommagescheiden, bijv. 23,24)",
           "refresh_interval": "Verversingsinterval in seconden (10-300, standaard: 30)"
         }
       }
@@ -35,8 +33,6 @@
           "password": "Wachtwoord",
           "ssh_port": "SSH-poort (standaard: 22)",
           "port_count": "Aantal poorten (1-48, standaard: 24)",
-          "exclude_ports": "Poorten uitsluiten (kommagescheiden, bijv. 1,24)",
-          "exclude_poe": "PoE-poorten uitsluiten (kommagescheiden, bijv. 23,24)",
           "refresh_interval": "Verversingsinterval in seconden (10-300, standaard: 30)"
         }
       }

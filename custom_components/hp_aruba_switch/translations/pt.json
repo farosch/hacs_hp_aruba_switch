@@ -10,8 +10,6 @@
           "password": "Senha",
           "ssh_port": "Porta SSH (padrão: 22)",
           "port_count": "Número de portas (1-48, padrão: 24)",
-          "exclude_ports": "Excluir portas (separado por vírgulas, ex: 1,24)",
-          "exclude_poe": "Excluir portas PoE (separado por vírgulas, ex: 23,24)",
           "refresh_interval": "Intervalo de atualização em segundos (10-300, padrão: 30)"
         }
       }
@@ -35,8 +33,6 @@
           "password": "Senha",
           "ssh_port": "Porta SSH (padrão: 22)",
           "port_count": "Número de portas (1-48, padrão: 24)",
-          "exclude_ports": "Excluir portas (separado por vírgulas, ex: 1,24)",
-          "exclude_poe": "Excluir portas PoE (separado por vírgulas, ex: 23,24)",
           "refresh_interval": "Intervalo de atualização em segundos (10-300, padrão: 30)"
         }
       }

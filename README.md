@@ -101,7 +101,6 @@ This design ensures reliable operation even with 50+ entities without overwhelmi
    - **Username**: Switch administrator username
    - **Password**: Switch administrator password
    - **SSH Port**: SSH port (default: 22)
-   - **Exclude Ports**: Comma-separated list of ports to exclude (optional)
 
 ### Configuration Options
 
@@ -112,8 +111,6 @@ This design ensures reliable operation even with 50+ entities without overwhelmi
 | Password | Yes | - | Administrator password |
 | SSH Port | Yes | 22 | SSH port number |
 | Ports | Yes | - | Amount of Ports (e.g., "24") |
-| Exclude Ports | No | - | Ports to exclude (e.g., "1,24") |
-| Exclude PoE | No | - | Ports to exclude (e.g., "1,24") |
 
 ## Entities Created
 
@@ -200,7 +197,6 @@ script:
 - Consider increasing update intervals for better performance
 
 **Performance issues:**
-- Use "Exclude Ports" to reduce entity count
 - Check network latency to switch
 - Monitor Home Assistant resource usage
 

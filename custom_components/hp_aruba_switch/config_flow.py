@@ -5,7 +5,7 @@ from homeassistant import config_entries  # type: ignore
 from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD  # type: ignore
 from homeassistant.core import HomeAssistant  # type: ignore
 from homeassistant.exceptions import HomeAssistantError  # type: ignore
-from .const import DOMAIN, CONF_EXCLUDE_PORTS, CONF_EXCLUDE_POE, CONF_SSH_PORT, CONF_PORT_COUNT, CONF_REFRESH_INTERVAL
+from .const import DOMAIN, CONF_SSH_PORT, CONF_PORT_COUNT, CONF_REFRESH_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,10 +94,7 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_REFRESH_INTERVAL, default=data.get(CONF_REFRESH_INTERVAL, 30)): vol.All(int, vol.Range(min=10, max=300)),
         }
         # Add checkboxes for port exclusion
-        for port_num in range(1, port_count + 1):
-            schema_dict[vol.Optional(f"exclude_port_{port_num}", default=data.get(f"exclude_port_{port_num}", False))] = bool
-        for port_num in range(1, port_count + 1):
-            schema_dict[vol.Optional(f"exclude_poe_{port_num}", default=data.get(f"exclude_poe_{port_num}", False))] = bool
+        # Exclusion checkboxes removed
 
         if user_input is not None:
             # If required fields are present, validate connection
@@ -105,9 +102,6 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if all(data.get(f) for f in required_fields):
                 try:
                     info = await validate_input(self.hass, data)
-                    # Collect exclusions
-                    exclude_ports = [str(i) for i in range(1, port_count + 1) if data.get(f"exclude_port_{i}")]
-                    exclude_poe = [str(i) for i in range(1, port_count + 1) if data.get(f"exclude_poe_{i}")]
                     entry_data = {
                         CONF_HOST: data[CONF_HOST],
                         CONF_USERNAME: data[CONF_USERNAME],
@@ -115,8 +109,6 @@ class ArubaSwitchConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_SSH_PORT: int(data.get(CONF_SSH_PORT, 22)),
                         CONF_PORT_COUNT: port_count,
                         CONF_REFRESH_INTERVAL: int(data.get(CONF_REFRESH_INTERVAL, 30)),
-                        CONF_EXCLUDE_PORTS: ",".join(exclude_ports),
-                        CONF_EXCLUDE_POE: ",".join(exclude_poe),
                     }
                     return self.async_create_entry(
                         title=f"Aruba Switch ({entry_data[CONF_HOST]}:{entry_data[CONF_SSH_PORT]})",
@@ -222,32 +214,7 @@ class ArubaSwitchOptionsFlowHandler(config_entries.OptionsFlow):
         # Generate checkbox schema based on port count
         port_count = self._data.get(CONF_PORT_COUNT, 24)
         
-        # Get current exclusions
-        current_exclude_ports = self.config_entry.data.get(CONF_EXCLUDE_PORTS, "").split(",")
-        current_exclude_ports = [p.strip() for p in current_exclude_ports if p.strip()]
-        current_exclude_poe = self.config_entry.data.get(CONF_EXCLUDE_POE, "").split(",")
-        current_exclude_poe = [p.strip() for p in current_exclude_poe if p.strip()]
-        
-        schema_dict = {}
-        
-        # Create checkboxes for port exclusion with current values
-        # Note: Labels will be dynamically shown as "Port 1", "Port 2", etc. in the UI
-        for port_num in range(1, port_count + 1):
-            port_str = str(port_num)
-            default_value = port_str in current_exclude_ports
-            schema_dict[vol.Optional(f"exclude_port_{port_num}", default=default_value)] = bool
-        
-        # Create checkboxes for PoE exclusion with current values
-        # Note: Labels will be dynamically shown as "Port 1 (PoE)", "Port 2 (PoE)", etc. in the UI
-        for port_num in range(1, port_count + 1):
-            port_str = str(port_num)
-            default_value = port_str in current_exclude_poe
-            schema_dict[vol.Optional(f"exclude_poe_{port_num}", default=default_value)] = bool
-        
-        return self.async_show_form(
-            step_id="port_exclusion",
-            data_schema=vol.Schema(schema_dict),
-        )
+        # Exclusion logic removed
 
     def _show_options_form(self, user_input=None, errors=None):
         """Show the options form."""
