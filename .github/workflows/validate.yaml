@@ -2,6 +2,7 @@ name: Validate
 
 on:
   push:
+    branches: ['**']  # Run on all branches including main
   pull_request:
   schedule:
     - cron: "0 0 * * *"
