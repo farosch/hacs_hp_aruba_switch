@@ -12,6 +12,12 @@
 #### Improvements
 - Consolidated port sensors into multi-attribute sensor
 - Combined port + PoE switches into single select entity per port
+- Enhanced parsers to extract comprehensive port statistics (error counters, utilization, packet rates)
+- Added PoE power monitoring (voltage, amperage, actual power draw, PoE class/type, LLDP data)
+- Added port details (port type, intrusion alerts, flow control, MAC addresses)
+- Improved config flow with dynamic checkbox generation based on port count
+- Updated translations (German, Spanish, French, Italian)
 - Faster startup time
 - Restore entity state after restart
 - Better entity naming with has_entity_name pattern
+- Python 3.13 testing alignment
