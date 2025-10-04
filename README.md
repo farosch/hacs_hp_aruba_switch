@@ -4,11 +4,6 @@
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]][license-url]
 
-> **⚠️ BREAKING CHANGES IN v1.0.8**  
-> This release includes major architectural improvements that **WILL BREAK existing installations**.  
-> **All entities will be recreated with new IDs.** You will need to update your dashboards, automations, and scripts.  
-> See [RELEASE_NOTES.md](RELEASE_NOTES.md) for migration instructions.
-
 A Home Assistant custom integration that provides control over HP/Aruba switch ports and PoE management through SSH connectivity.
 
 ## 🌟 **Key Features**
