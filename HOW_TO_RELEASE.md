@@ -90,9 +90,6 @@ Always test before pushing to main:
 # Run unit tests with test data
 python tests/run_tests.py
 
-# Test specific parsers
-python tests/test_password_escape.py
-
 # Validate manifest
 python -c "import json; json.load(open('custom_components/hp_aruba_switch/manifest.json'))"
 ```

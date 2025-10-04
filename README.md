@@ -268,9 +268,47 @@ The integration is available in multiple languages:
 - Italian (Italiano)
 - Spanish (Español)
 
+## Development & Testing
+
+### Automated CI/CD Pipeline
+
+This project uses GitHub Actions for automated testing and releases:
+
+- **Tests**: Run automatically on ALL branches when code is pushed
+- **Releases**: Created automatically when pushing to `main` branch after tests pass
+- **Versioning**: Single source of truth in `manifest.json`
+- **Release Notes**: Automatically populated from `RELEASE_NOTES.md`
+
+See [HOW_TO_RELEASE.md](HOW_TO_RELEASE.md) for step-by-step instructions on creating a release.
+
+### Running Tests Locally
+
+```bash
+# Install dependencies
+pip install paramiko
+
+# Run unit tests with test data
+python tests/run_tests.py
+```
+
+### Test Data
+
+Test data files are located in `tests/test_data/` and contain real output from HP/Aruba switches:
+- `show_interface_all.txt`
+- `show_interface_brief.txt`
+- `show_power_over_ethernet_all.txt`
+- `show_version.txt`
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+**Before submitting:**
+1. Run tests locally: `python tests/run_tests.py`
+2. Ensure all Python files compile: `python -m compileall custom_components/hp_aruba_switch/`
+3. Update `RELEASE_NOTES.md` if adding features or fixing bugs
+
+The CI/CD pipeline will automatically run tests on your pull request.
 
 ## License
 

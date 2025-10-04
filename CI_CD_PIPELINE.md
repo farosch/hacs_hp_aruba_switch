@@ -87,9 +87,6 @@ Run tests locally before pushing:
 ```bash
 # Unit tests with test data files
 python tests/run_tests.py
-
-# Integration tests with real switch
-python tests/test_password_escape.py
 ```
 
 ### Test Data
