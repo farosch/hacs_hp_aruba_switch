@@ -52,8 +52,8 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict:
             if ssh:
                 try:
                     ssh.close()
-                except:
-                    pass
+                except Exception as e:
+                    _LOGGER.debug(f"Error closing SSH connection during validation: {e}")
     
     # Run connection test in executor
     import asyncio

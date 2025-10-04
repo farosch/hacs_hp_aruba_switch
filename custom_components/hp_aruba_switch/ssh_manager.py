@@ -187,8 +187,8 @@ class ArubaSSHManager:
                         if ssh:
                             try:
                                 ssh.close()
-                            except:
-                                pass
+                            except Exception as e:
+                                _LOGGER.debug(f"Error closing SSH connection: {e}")
                 
                 # Run in executor with shorter timeout
                 loop = asyncio.get_event_loop()
@@ -228,8 +228,12 @@ class ArubaSSHManager:
                     return None
 
 
-    async def get_all_switch_data(self) -> tuple[dict, dict, dict, dict, dict]:
-        """Execute all commands (prefer single session, fall back to sequential) and parse the output."""
+    async def get_all_switch_data(self) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        """Execute all commands (prefer single session, fall back to sequential) and parse the output.
+        
+        Returns:
+            Tuple of (interfaces, statistics, link_details, poe_ports, version_info) dictionaries.
+        """
         commands = [
             "show interface all",
             "show interface brief",
@@ -344,23 +348,27 @@ class ArubaSSHManager:
         _LOGGER.error(f"❌ Sequential fallback produced no usable data for {self.host}")
         return {}, {}, {}, {}, {}
     
-    def _parse_combined_output(self, output: str, commands: list) -> tuple[dict, dict, dict, dict, dict]:
-        """Parse the combined output from all commands."""
-        _LOGGER.error(f"🚨 PARSING STARTED! Output length: {len(output)} for {self.host}")
-        _LOGGER.debug(f"🔍 _parse_combined_output starting, output length: {len(output)}")
+    def _parse_combined_output(self, output: str, commands: list) -> tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        """Parse the combined output from all commands.
+        
+        Args:
+            output: Raw combined output from all commands
+            commands: List of commands that were executed
+            
+        Returns:
+            Tuple of (interfaces, statistics, link_details, poe_ports, version_info) dictionaries.
+        """
+        _LOGGER.debug(f"Parsing combined output for {self.host} (length: {len(output)} chars)")
         interfaces = {}
         statistics = {}
         link_details = {}
         poe_ports = {}
         version_info = {}
-        _LOGGER.error(f"🚨 PARSING CHECKPOINT 1: Dictionaries initialized for {self.host}")
         
         # Split output by command boundaries - look for command echoes or patterns
-        _LOGGER.debug(f"🔪 Starting output splitting")
-        _LOGGER.error(f"🚨 PARSING CHECKPOINT 2: About to call _split_output_by_commands for {self.host}")
+        _LOGGER.debug(f"Splitting output into command sections for {self.host}")
         sections = self._split_output_by_commands(output, commands)
-        _LOGGER.error(f"🚨 PARSING CHECKPOINT 3: _split_output_by_commands completed, got {len(sections)} sections for {self.host}")
-        _LOGGER.debug(f"✂️ Output splitting completed, got {len(sections)} sections")
+        _LOGGER.debug(f"Split into {len(sections)} sections for {self.host}")
         
         for i, (cmd, section_output) in enumerate(sections.items()):
             _LOGGER.debug(f"🔄 Processing section {i+1}/{len(sections)} for command '{cmd}' (length: {len(section_output)})")
@@ -422,15 +430,23 @@ class ArubaSSHManager:
         
         return interfaces, statistics, link_details, poe_ports, version_info
     
-    def _split_output_by_commands(self, output: str, commands: list) -> dict:
-        """Split the combined output into sections for each command."""
-        _LOGGER.error(f"🚨 SPLIT_OUTPUT_BY_COMMANDS STARTED for {self.host} with {len(commands)} commands")
+    def _split_output_by_commands(self, output: str, commands: list) -> Dict[str, str]:
+        """Split the combined output into sections for each command.
+        
+        Args:
+            output: Raw combined output
+            commands: List of commands to split by
+            
+        Returns:
+            Dictionary mapping command to its output section.
+        """
+        _LOGGER.debug(f"Splitting output for {self.host} ({len(commands)} commands)")
         sections = {}
         current_section = ""
         current_command = None
         
         lines = output.split('\n')
-        _LOGGER.error(f"🚨 SPLIT_OUTPUT: Split into {len(lines)} lines for {self.host}")
+        _LOGGER.debug(f"Processing {len(lines)} lines for {self.host}")
         
         for line in lines:
             line_stripped = line.strip()
@@ -467,8 +483,16 @@ class ArubaSSHManager:
         
         return sections
     
-    def _split_by_output_patterns(self, output: str, commands: list) -> dict:
-        """Alternative splitting method based on output patterns."""
+    def _split_by_output_patterns(self, output: str, commands: list) -> Dict[str, str]:
+        """Alternative splitting method based on output patterns.
+        
+        Args:
+            output: Raw combined output
+            commands: List of commands to split by
+            
+        Returns:
+            Dictionary mapping command to its output section.
+        """
         sections = {}
         
         # Simple approach: split the output into roughly equal parts
@@ -495,8 +519,15 @@ class ArubaSSHManager:
         
         return sections
     
-    def _parse_interface_all_output(self, output: str) -> tuple[dict, dict, dict]:
-        """Parse 'show interface all' output for interfaces, statistics, and link details."""
+    def _parse_interface_all_output(self, output: str) -> tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+        """Parse 'show interface all' output for interfaces, statistics, and link details.
+        
+        Args:
+            output: Raw output from 'show interface all' command
+            
+        Returns:
+            Tuple of (interfaces, statistics, link_details) dictionaries.
+        """
         interfaces: dict[str, dict] = {}
         statistics: dict[str, dict] = {}
         link_details: dict[str, dict] = {}
@@ -642,8 +673,15 @@ class ArubaSSHManager:
 
         return interfaces, statistics, link_details
     
-    def _parse_interface_brief_output(self, output: str) -> dict:
-        """Parse 'show interface brief' output for speed/duplex data."""
+    def _parse_interface_brief_output(self, output: str) -> Dict[str, Dict[str, Any]]:
+        """Parse 'show interface brief' output for speed/duplex data.
+        
+        Args:
+            output: Raw output from 'show interface brief' command
+            
+        Returns:
+            Dictionary mapping port number to brief info (speed, duplex, etc.).
+        """
         brief_info = {}
         lines = output.split('\n')
         in_port_section = False

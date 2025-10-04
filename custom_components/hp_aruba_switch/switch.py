@@ -1,10 +1,14 @@
-import logging
+"""Switch entities for HP/Aruba Switch integration."""
 import asyncio
+import logging
+from datetime import datetime
+from typing import Any, Dict, Optional
+
 import paramiko
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN, CONF_REFRESH_INTERVAL
+
+from .const import DOMAIN
+from .entity import ArubaSwitchEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,16 +47,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities, update_before_add=False)
 
 
-class ArubaSwitch(CoordinatorEntity, SwitchEntity):
+class ArubaSwitch(ArubaSwitchEntity, SwitchEntity):
     """Representation of an Aruba switch port."""
     
-    def __init__(self, coordinator, port, is_poe, entry_id):
+    def __init__(self, coordinator, port: str, is_poe: bool, entry_id: str):
         """Initialize the switch."""
-        super().__init__(coordinator)
-        self._coordinator = coordinator
+        super().__init__(coordinator, entry_id)
         self._port = port
         self._is_poe = is_poe
-        self._entry_id = entry_id
         self._attr_name = f"Port {port} {'PoE' if is_poe else ''}".strip()
         self._attr_unique_id = f"{coordinator.host}_{port}_{'poe' if is_poe else 'port'}"
         self._attr_is_on = False
@@ -79,42 +81,15 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
         }
 
     @property
-    def name(self):
-        """Return the name of the switch."""
-        return self._attr_name
-
-    @property
-    def unique_id(self):
-        """Return a unique ID for this entity."""
-        return self._attr_unique_id
-
-    @property
-    def is_on(self):
+    def is_on(self) -> bool:
         """Return true if switch is on."""
-        _LOGGER.debug(f"🔍 is_on property called for {self._attr_name}: {self._attr_is_on}")
+        _LOGGER.debug(f"is_on property called for {self._attr_name}: {self._attr_is_on}")
         return self._attr_is_on
 
     @property
-    def available(self):
-        """Return if entity is available."""
-        available = self.coordinator.last_update_success and getattr(self, '_attr_available', True)
-        _LOGGER.debug(f"🔍 available property called for {self._attr_name}: {available}")
-        return available
-
-    @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return the state attributes."""
         return self._attr_extra_state_attributes
-
-    @property
-    def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._coordinator.host)},
-            "name": f"Switch {self._coordinator.host}",
-            "manufacturer": "Aruba", 
-            "model": "Switch",
-        }
 
     async def async_turn_on(self, **kwargs):
         """Turn the switch on."""
@@ -188,7 +163,10 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
             link_details = self._coordinator.data.get("link_details", {})
             poe_ports = self._coordinator.data.get("poe_ports", {})
             
-            _LOGGER.debug(f"📊 Available data - interfaces: {len(interfaces)}, stats: {len(statistics)}, links: {len(link_details)}, poe: {len(poe_ports)}")
+            _LOGGER.debug(
+                f"Available data for {self._attr_name} - interfaces: {len(interfaces)}, "
+                f"stats: {len(statistics)}, links: {len(link_details)}, poe: {len(poe_ports)}"
+            )
             
             status = interfaces.get(self._port, {})
             port_statistics = statistics.get(self._port, {})  
@@ -224,7 +202,6 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
                 _LOGGER.debug(f"Interface port {self._port}: port_enabled={port_enabled}, link_up={link_up}, final_state={self._attr_is_on}")
             
             # Update all attributes with comprehensive port information
-            import datetime
             self._attr_extra_state_attributes.update({
                 "port_number": self._port,
                 "link_status": "up" if port_link_details.get("link_up", False) else "down",
@@ -236,7 +213,7 @@ class ArubaSwitch(CoordinatorEntity, SwitchEntity):
                 "bytes_out": port_statistics.get("bytes_tx", 0),
                 "packets_in": port_statistics.get("unicast_rx", 0),
                 "packets_out": port_statistics.get("unicast_tx", 0),
-                "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "last_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
             
             # Add type-specific attributes

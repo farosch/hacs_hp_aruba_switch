@@ -1,12 +1,17 @@
-from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+"""HP/Aruba Switch Integration."""
+import asyncio
+import logging
 from datetime import timedelta
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers import config_validation as cv
+
 from .const import DOMAIN
 from .ssh_manager import get_ssh_manager
-import logging
-import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,10 +103,17 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Only unload switch platform for now (sensors temporarily disabled)
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["switch"])
+    # Unload all active platforms
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in ["switch", "sensor", "binary_sensor"]
+            ]
+        )
+    )
     
     if unload_ok:
         # Remove the config entry from hass.data
