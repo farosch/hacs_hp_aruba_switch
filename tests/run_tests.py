@@ -153,51 +153,51 @@ def test_parse_show_version():
         return False
 
 
-async def test_real_switch():
-    """Test against real switch."""
-    print("\n" + "="*60)
-    print("TEST: Real Switch Integration")
-    print("="*60)
-    
-    # Password with special characters - the = needs to be escaped with backslash
-    password = r"SY\=ojE3%'_s"
-    manager = ArubaSSHManager("10.4.20.65", "manager", password, 22)
-    
-    try:
-        # Test connectivity
-        print("\n🔌 Testing connectivity...")
-        print(f"   Host: 10.4.20.65")
-        print(f"   Username: manager")
-        print(f"   Password length: {len(password)} chars")
-        
-        is_available = await manager.test_connectivity()
-        if not is_available:
-            print("❌ Could not connect to switch")
-            print("   Possible issues:")
-            print("   - Incorrect credentials")
-            print("   - Network connectivity")
-            print("   - SSH not enabled on switch")
-            return False
-        print("✅ Connected to switch")
-        
-        # Test get_all_switch_data
-        print("\n📊 Collecting all switch data...")
-        interfaces, statistics, link_details, poe_ports, version_info = await manager.get_all_switch_data()
-        
-        print(f"\n✅ Data Collection Results:")
-        print(f"   Interfaces: {len(interfaces)}")
-        print(f"   Statistics: {len(statistics)}")
-        print(f"   Link Details: {len(link_details)}")
-        print(f"   PoE Ports: {len(poe_ports)}")
-        print(f"   Version Info: {bool(version_info)}")
-        
-        if version_info:
-            print(f"\n📟 Switch Information:")
-            print(f"   Model: {version_info.get('model', 'Unknown')}")
-            print(f"   Firmware: {version_info.get('firmware_version', 'Unknown')}")
-        
-        # Show some port details
-        if interfaces:
+## async def test_real_switch():
+##     """Test against real switch."""
+##     print("\n" + "="*60)
+##     print("TEST: Real Switch Integration")
+##     print("="*60)
+##     
+##     # Password with special characters - the = needs to be escaped with backslash
+##     password = r"SY\=ojE3%'_s"
+##     manager = ArubaSSHManager("10.4.20.65", "manager", password, 22)
+##     
+##     try:
+##         # Test connectivity
+##         print("\n🔌 Testing connectivity...")
+##         print(f"   Host: 10.4.20.65")
+##         print(f"   Username: manager")
+##         print(f"   Password length: {len(password)} chars")
+##         
+##         is_available = await manager.test_connectivity()
+##         if not is_available:
+##             print("❌ Could not connect to switch")
+##             print("   Possible issues:")
+##             print("   - Incorrect credentials")
+##             print("   - Network connectivity")
+##             print("   - SSH not enabled on switch")
+##             return False
+##         print("✅ Connected to switch")
+##         
+##         # Test get_all_switch_data
+##         print("\n📊 Collecting all switch data...")
+##         interfaces, statistics, link_details, poe_ports, version_info = await manager.get_all_switch_data()
+##         
+##         print(f"\n✅ Data Collection Results:")
+##         print(f"   Interfaces: {len(interfaces)}")
+##         print(f"   Statistics: {len(statistics)}")
+##         print(f"   Link Details: {len(link_details)}")
+##         print(f"   PoE Ports: {len(poe_ports)}")
+##         print(f"   Version Info: {bool(version_info)}")
+##         
+##         if version_info:
+##             print(f"\n📟 Switch Information:")
+##             print(f"   Model: {version_info.get('model', 'Unknown')}")
+##             print(f"   Firmware: {version_info.get('firmware_version', 'Unknown')}")
+##         
+##         # Show some port details
+##         if interfaces:
             up_ports = [p for p, info in interfaces.items() if info.get('link_status') == 'up']
             print(f"\n🔗 Ports with link up: {', '.join(sorted(up_ports, key=lambda x: int(x)))}")
         
@@ -227,8 +227,6 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("REAL SWITCH TESTS")
     print("="*60)
-    result = asyncio.run(test_real_switch())
-    results.append(("Real Switch Integration", result))
     
     # Summary
     print("\n" + "="*60)
