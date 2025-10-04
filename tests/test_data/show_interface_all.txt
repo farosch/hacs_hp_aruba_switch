@@ -1,0 +1,728 @@
+HP-2530-24G-PoEP# show interface all
+
+ Status and Counters - Port Counters for port 1
+
+  Name  :
+  MAC Address      : 480fcf-8511bf
+  Link Status      : Up
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 123,932,543          Bytes Tx        : 8,253,781
+   Unicast Rx      : 104,533              Unicast Tx      : 19,152
+   Bcast/Mcast Rx  : 5,940                Bcast/Mcast Tx  : 455
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 170,424               Total Tx (bps) : 32,104
+   Unicast Rx (Pkts/sec) : 5              Unicast Tx (Pkts/sec) : 4
+   B/Mcast Rx (Pkts/sec) : 2              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  : 00.01 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 2
+
+  Name  :
+  MAC Address      : 480fcf-8511be
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 3
+
+  Name  :
+  MAC Address      : 480fcf-8511bd
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 4
+
+  Name  :
+  MAC Address      : 480fcf-8511bc
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 5
+
+  Name  :
+  MAC Address      : 480fcf-8511bb
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 6
+
+  Name  :
+  MAC Address      : 480fcf-8511ba
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 7
+
+  Name  :
+  MAC Address      : 480fcf-8511b9
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 8
+
+  Name  :
+  MAC Address      : 480fcf-8511b8
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 9
+
+  Name  :
+  MAC Address      : 480fcf-8511b7
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 10
+
+  Name  :
+  MAC Address      : 480fcf-8511b6
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 11
+
+  Name  :
+  MAC Address      : 480fcf-8511b5
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 12
+
+  Name  :
+  MAC Address      : 480fcf-8511b4
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 13
+
+  Name  :
+  MAC Address      : 480fcf-8511b3
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 14
+
+  Name  :
+  MAC Address      : 480fcf-8511b2
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 15
+
+  Name  :
+  MAC Address      : 480fcf-8511b1
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 16
+
+  Name  :
+  MAC Address      : 480fcf-8511b0
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 17
+
+  Name  :
+  MAC Address      : 480fcf-8511af
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 18
+
+  Name  :
+  MAC Address      : 480fcf-8511ae
+  Link Status      : Down
+  Port Enabled     : No
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 19
+
+  Name  :
+  MAC Address      : 480fcf-8511ad
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 20
+
+  Name  :
+  MAC Address      : 480fcf-8511ac
+  Link Status      : Up
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 2,904,953            Bytes Tx        : 123,209,964
+   Unicast Rx      : 9,850                Unicast Tx      : 98,658
+   Bcast/Mcast Rx  : 254                  Bcast/Mcast Tx  : 5,999
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 6,360                 Total Tx (bps) : 164,312
+   Unicast Rx (Pkts/sec) : 1              Unicast Tx (Pkts/sec) : 1
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 2
+   Utilization Rx  :     0 %              Utilization Tx  : 00.01 %
+
+
+ Status and Counters - Port Counters for port 21
+
+  Name  :
+  MAC Address      : 480fcf-8511ab
+  Link Status      : Down
+  Port Enabled     : No
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 22
+
+  Name  :
+  MAC Address      : 480fcf-8511aa
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 23
+
+  Name  :
+  MAC Address      : 480fcf-8511a9
+  Link Status      : Up
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 1,027,367            Bytes Tx        : 964,725
+   Unicast Rx      : 3,073                Unicast Tx      : 1,744
+   Bcast/Mcast Rx  : 144                  Bcast/Mcast Tx  : 6,029
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 2,808                 Total Tx (bps) : 4,256
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 1
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 2
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 24
+
+  Name  :
+  MAC Address      : 480fcf-8511a8
+  Link Status      : Up
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 743,617              Bytes Tx        : 861,038
+   Unicast Rx      : 2,068                Unicast Tx      : 1,423
+   Bcast/Mcast Rx  : 118                  Bcast/Mcast Tx  : 6,125
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 2,376                 Total Tx (bps) : 3,960
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 2
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 25
+
+  Name  :
+  MAC Address      : 480fcf-8511a7
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 26
+
+  Name  :
+  MAC Address      : 480fcf-8511a6
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 27
+
+  Name  :
+  MAC Address      : 480fcf-8511a5
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %
+
+
+ Status and Counters - Port Counters for port 28
+
+  Name  :
+  MAC Address      : 480fcf-8511a4
+  Link Status      : Down
+  Port Enabled     : Yes
+  Totals (Since boot or last clear) :
+   Bytes Rx        : 0                    Bytes Tx        : 0
+   Unicast Rx      : 0                    Unicast Tx      : 0
+   Bcast/Mcast Rx  : 0                    Bcast/Mcast Tx  : 0
+  Errors (Since boot or last clear) :
+   FCS Rx          : 0                    Drops Tx        : 0
+   Alignment Rx    : 0                    Collisions Tx   : 0
+   Runts Rx        : 0                    Late Colln Tx   : 0
+   Giants Rx       : 0                    Excessive Colln : 0
+   Total Rx Errors : 0                    Deferred Tx     : 0
+  Others (Since boot or last clear) :
+   Discard Rx      : 0                    Out Queue Len   : 0
+   Unknown Protos  : 0
+  Rates (5 minute weighted average) :
+   Total Rx (bps) : 0                     Total Tx (bps) : 0
+   Unicast Rx (Pkts/sec) : 0              Unicast Tx (Pkts/sec) : 0
+   B/Mcast Rx (Pkts/sec) : 0              B/Mcast Tx (Pkts/sec) : 0
+   Utilization Rx  :     0 %              Utilization Tx  :     0 %

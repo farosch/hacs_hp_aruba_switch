@@ -1,0 +1,676 @@
+HP-2530-24G-PoEP# show power-over-ethernet all
+
+ Status and Configuration Information for port 1
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 12.9 W        PSE TLV Sent Type  : MED
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : MED
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 2
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 3
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 4
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 5
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 6
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 7
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 8
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 9
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 10
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 11
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 12
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 13
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 14
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 15
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 16
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 17
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 18
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 19
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 20
+
+  Power Enable      : Yes                   PoE Port Status    : Delivering
+  PLC Class/Type    : 3/1                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 4.2 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 12.9 W        PSE TLV Sent Type  : MED
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : MED
+
+
+  Power Information
+
+  PSE Voltage       : 54.6 V                PSE Reserved Power : 4.5 W
+  PD Amperage Draw  : 78 mA                 PD Power Draw      : 4.3 W
+
+
+ Status and Configuration Information for port 21
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 22
+
+  Power Enable      : Yes                   PoE Port Status    : Searching
+  PLC Class/Type    : 0/-                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 0.0 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 0.0 W         PSE TLV Sent Type  : dot3
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : n/a
+
+
+  Power Information
+
+  PSE Voltage       : 0.0 V                 PSE Reserved Power : 0.0 W
+  PD Amperage Draw  : 0 mA                  PD Power Draw      : 0.0 W
+
+
+ Status and Configuration Information for port 23
+
+  Power Enable      : Yes                   PoE Port Status    : Delivering
+  PLC Class/Type    : 3/1                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 4.6 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 12.9 W        PSE TLV Sent Type  : MED
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : MED
+
+
+  Power Information
+
+  PSE Voltage       : 54.8 V                PSE Reserved Power : 4.8 W
+  PD Amperage Draw  : 84 mA                 PD Power Draw      : 4.7 W
+
+
+ Status and Configuration Information for port 24
+
+  Power Enable      : Yes                   PoE Port Status    : Delivering
+  PLC Class/Type    : 3/1                   Priority Config    : low
+  DLC Class/Type    : 0/-                   Pre-std Detect     : off
+  Alloc By Config   : usage                 Configured Type    :
+  Alloc By Actual   : usage                 PoE Value Config   : n/a
+
+
+  PoE Counter Information
+
+  Over Current Cnt  : 0                     MPS Absent Cnt     : 0
+  Power Denied Cnt  : 0                     Short Cnt          : 0
+
+
+  LLDP Information
+
+  PSE Allocated Power Value : 4.6 W         PSE TLV Configured : dot3, MED
+  PD Requested Power Value  : 12.9 W        PSE TLV Sent Type  : MED
+  MED LLDP Detect           : Disabled      PD TLV Sent Type   : MED
+
+
+  Power Information
+
+  PSE Voltage       : 54.8 V                PSE Reserved Power : 4.8 W
+  PD Amperage Draw  : 83 mA                 PD Power Draw      : 4.6 W
+
+
+
+ Refer to command's help option for field definitions

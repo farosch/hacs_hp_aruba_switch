@@ -1,0 +1,9 @@
+HP-2530-24G-PoEP# show version
+
+Image stamp:    /ws/swbuildm/rel_yakima_qaoff/code/build/lakes(swbuildm_rel_yakima_qaoff_rel_yakima)
+                Feb 27 2019 22:56:36
+                YA.16.08.0002
+                848
+Boot Image:     Primary
+
+Boot ROM Version:    YA.15.20
