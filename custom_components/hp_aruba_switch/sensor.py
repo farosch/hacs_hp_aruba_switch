@@ -3,9 +3,9 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfInformation
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass  # type: ignore
+from homeassistant.const import UnitOfInformation  # type: ignore
+from homeassistant.helpers.restore_state import RestoreEntity  # type: ignore
 
 from .const import DOMAIN
 from .entity import ArubaSwitchEntity

@@ -4,11 +4,11 @@ import logging
 from datetime import timedelta
 from typing import Any, Dict, Set
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.config_entries import ConfigEntry  # type: ignore
+from homeassistant.core import HomeAssistant  # type: ignore
+from homeassistant.exceptions import ConfigEntryNotReady  # type: ignore
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed  # type: ignore
+from homeassistant.helpers import config_validation as cv, device_registry as dr  # type: ignore
 
 from .const import DOMAIN
 from .ssh_manager import get_ssh_manager
@@ -162,7 +162,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, coordinator.host)},
         name=f"Switch {coordinator.host}",
-        manufacturer="Aruba",
+        manufacturer="HP/Aruba",
         model=coordinator.model,
         sw_version=coordinator.firmware,
         serial_number=coordinator.serial_number if coordinator.serial_number != "Unknown" else None,

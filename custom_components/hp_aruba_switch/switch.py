@@ -4,8 +4,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-import paramiko
-from homeassistant.components.switch import SwitchEntity
+import paramiko  # type: ignore
+from homeassistant.components.switch import SwitchEntity  # type: ignore
 
 from .const import DOMAIN
 from .entity import ArubaSwitchEntity
@@ -13,7 +13,7 @@ from .entity import ArubaSwitchEntity
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up Aruba switch from a config entry."""
+    """Set up HP/Aruba switch from a config entry."""
     _LOGGER.debug("HP/Aruba Switch integration starting setup")
     
     # Get the coordinator from the integration setup

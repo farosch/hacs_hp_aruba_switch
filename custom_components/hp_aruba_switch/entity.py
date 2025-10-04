@@ -1,7 +1,7 @@
 """Base entity for HP/Aruba Switch integration."""
 from typing import Any, Dict, Optional
 
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.update_coordinator import CoordinatorEntity  # type: ignore
 
 from .const import DOMAIN
 
@@ -21,7 +21,7 @@ class ArubaSwitchEntity(CoordinatorEntity):
         device = {
             "identifiers": {(DOMAIN, self.coordinator.host)},
             "name": f"Switch {self.coordinator.host}",
-            "manufacturer": "Aruba",
+            "manufacturer": "HP/Aruba",
             "model": self.coordinator.model,
         }
         

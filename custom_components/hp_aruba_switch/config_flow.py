@@ -1,10 +1,10 @@
-import voluptuous as vol
-import paramiko
+import voluptuous as vol  # type: ignore
+import paramiko  # type: ignore
 import logging
-from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant import config_entries  # type: ignore
+from homeassistant.const import CONF_HOST, CONF_USERNAME, CONF_PASSWORD  # type: ignore
+from homeassistant.core import HomeAssistant  # type: ignore
+from homeassistant.exceptions import HomeAssistantError  # type: ignore
 from .const import DOMAIN, CONF_EXCLUDE_PORTS, CONF_EXCLUDE_POE, CONF_SSH_PORT, CONF_PORT_COUNT, CONF_REFRESH_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)

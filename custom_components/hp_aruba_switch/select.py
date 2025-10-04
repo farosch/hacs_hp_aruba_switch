@@ -3,9 +3,9 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-import paramiko
-from homeassistant.components.select import SelectEntity
-from homeassistant.helpers.restore_state import RestoreEntity
+import paramiko  # type: ignore
+from homeassistant.components.select import SelectEntity  # type: ignore
+from homeassistant.helpers.restore_state import RestoreEntity  # type: ignore
 
 from .const import DOMAIN
 from .entity import ArubaSwitchEntity
