@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "HP/Aruba Switch Configuration",
-        "description": "Enter the connection details for your HP/Aruba switch.",
+        "description": "",
         "data": {
           "host": "Host (IP address or hostname)",
           "username": "Username",
@@ -12,10 +12,6 @@
           "port_count": "Number of ports (1-48, default: 24)",
           "refresh_interval": "Refresh interval in seconds (10-300, default: 30)"
         }
-      },
-      "port_exclusion": {
-        "title": "Port Exclusion Configuration",
-        "description": "Select which ports to exclude from the integration. Excluded ports will not create entities in Home Assistant.\n\n**Exclude from Integration**: These ports will not appear in Home Assistant at all.\n\n**Exclude from PoE Control**: These ports will appear but without PoE control options (use for non-PoE ports)."
       }
     },
     "error": {
@@ -39,10 +35,6 @@
           "port_count": "Number of ports (1-48, default: 24)",
           "refresh_interval": "Refresh interval in seconds (10-300, default: 30)"
         }
-      },
-      "port_exclusion": {
-        "title": "Port Exclusion Configuration",
-        "description": "Select which ports to exclude from the integration. Excluded ports will not create entities in Home Assistant.\n\n**Exclude from Integration**: These ports will not appear in Home Assistant at all.\n\n**Exclude from PoE Control**: These ports will appear but without PoE control options (use for non-PoE ports)."
       }
     },
     "error": {
@@ -55,15 +47,6 @@
     "sensor": {
       "port_statistics": {
         "name": "Port {port}"
-      },
-      "port_bytes_in": {
-        "name": "Port {port} Traffic In"
-      },
-      "port_bytes_out": {
-        "name": "Port {port} Traffic Out"
-      },
-      "switch_status": {
-        "name": "Switch Status"
       }
     },
     "select": {
