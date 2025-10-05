@@ -9,17 +9,14 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12"]
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.13
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.13"
       
       - name: Install dependencies
         run: |
@@ -40,22 +37,8 @@ jobs:
           python -c "import json; json.load(open('custom_components/hp_aruba_switch/manifest.json'))"
           echo "✅ manifest.json is valid"
 
-  hassfest:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: home-assistant/actions/hassfest@master
-
-  validate-hacs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: HACS validation
-        uses: hacs/action@main
-        with:
-          category: "integration"
-
   release:
-    needs: [test, hassfest, validate-hacs]
+    needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:

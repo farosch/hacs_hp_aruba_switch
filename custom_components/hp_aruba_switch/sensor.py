@@ -28,18 +28,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     
     entities = []
     
-    # Create switch status sensor (always present)
-    entities.append(ArubaSwitchStatusSensor(coordinator, config_entry.entry_id))
-    _LOGGER.debug("Created switch status sensor")
-    
     # Create port sensors only for detected ports
     for port in sorted(coordinator.detected_ports, key=lambda x: int(x) if x.isdigit() else 999):
-        # Create consolidated port sensor
+        # Create consolidated port sensor (all data as attributes)
         entities.append(ArubaPortSensor(coordinator, port, config_entry.entry_id))
-        
-        # Create dedicated traffic sensors for better statistics tracking
-        entities.append(ArubaPortTrafficSensor(coordinator, port, config_entry.entry_id, "in"))
-        entities.append(ArubaPortTrafficSensor(coordinator, port, config_entry.entry_id, "out"))
     
     _LOGGER.info(
         f"Created {len(entities)} sensor entities for {len(coordinator.detected_ports)} ports "
@@ -78,6 +70,11 @@ class ArubaPortSensor(ArubaSwitchEntity, SensorEntity, RestoreEntity):
             _LOGGER.debug(f"Restored last state for port {self._port}: {last_state.state}")
     
     @property
+    def available(self) -> bool:
+        """Return if entity is available based on coordinator success."""
+        return self.coordinator.last_update_success
+    
+    @property
     def native_value(self) -> str:
         """Return the main state: port operational status."""
         data = self._get_coordinator_data()
@@ -97,41 +94,30 @@ class ArubaPortSensor(ArubaSwitchEntity, SensorEntity, RestoreEntity):
     
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return comprehensive port statistics and details."""
+        """Expose all parser fields for this port as sensor attributes."""
         data = self._get_coordinator_data()
         if not data:
             return {}
-        
+
         statistics = data.get("statistics", {})
         link_details = data.get("link_details", {})
         interfaces = data.get("interfaces", {})
-        
+        poe_ports = data.get("poe_ports", {})
+
         port_stats = statistics.get(self._port, {})
         port_link = link_details.get(self._port, {})
         port_interface = interfaces.get(self._port, {})
-        
-        attributes = {
-            # Link status
-            "port_enabled": port_link.get("port_enabled", False),
-            "link_up": port_link.get("link_up", False),
-            "link_speed": port_link.get("link_speed", "unknown"),
-            "duplex": port_link.get("duplex", "unknown"),
-            "auto_negotiation": port_link.get("auto_negotiation", "unknown"),
-            "cable_type": port_link.get("cable_type", "unknown"),
-            
-            # Traffic statistics
-            "bytes_in": port_stats.get("bytes_rx", 0),
-            "bytes_out": port_stats.get("bytes_tx", 0),
-            "packets_in": port_stats.get("unicast_rx", 0),
-            "packets_out": port_stats.get("unicast_tx", 0),
-            
-            # Activity calculation
-            "activity": self._calculate_activity(port_stats),
-            
-            # Link status from interface
-            "link_status": port_interface.get("link_status", "unknown"),
-        }
-        
+        port_poe = poe_ports.get(self._port, {})
+
+        # Merge all fields from all parser sources
+        attributes = {}
+        attributes.update(port_stats)
+        attributes.update(port_link)
+        attributes.update(port_interface)
+        attributes.update(port_poe)
+        # Add activity calculation
+        attributes["activity"] = self._calculate_activity(port_stats)
+
         return attributes
     
     def _calculate_activity(self, stats: Dict[str, Any]) -> str:
@@ -174,92 +160,7 @@ class ArubaPortSensor(ArubaSwitchEntity, SensorEntity, RestoreEntity):
                 return "mdi:ethernet-cable"
 
 
-class ArubaSwitchStatusSensor(ArubaSwitchEntity, SensorEntity):
-    """Sensor for overall switch status with firmware details."""
-    
-    def __init__(self, coordinator, entry_id: str):
-        """Initialize the sensor."""
-        super().__init__(coordinator, entry_id)
-        self._attr_translation_key = "switch_status"
-        self._attr_name = f"Switch Status"
-        self._attr_unique_id = f"aruba_switch_{coordinator.host.replace('.', '_')}_status"
-        self._attr_icon = "mdi:lan-connect"
-        
-    @property
-    def native_value(self) -> str:
-        """Return the state of the sensor."""
-        if not self.coordinator.last_update_success:
-            return "offline"
-
-        data = self.coordinator.data or {}
-        if "available" in data:
-            return "online" if data.get("available") else "offline"
-
-        return "online"
-        
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        # Status sensor is always available to show online/offline
-        return True
-        
-    @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Return comprehensive switch information."""
-        data = self.coordinator.data or {}
-        version_info = data.get("version_info", {})
-        
-        attributes = {
-            "host": self.coordinator.host,
-            "last_successful_update": data.get("last_successful_connection"),
-            "last_coordinator_refresh_success": self.coordinator.last_update_success,
-        }
-        
-        # Add firmware/model info if available
-        if version_info:
-            attributes.update({
-                "model": version_info.get("model", "Unknown"),
-                "firmware_version": version_info.get("firmware_version", "Unknown"),
-                "rom_version": version_info.get("rom_version", "Unknown"),
-                "serial_number": version_info.get("serial_number", "Unknown"),
-            })
-        
-        return attributes
+# Removed ArubaSwitchStatusSensor - port sensors will show unavailable when switch is offline
 
 
-class ArubaPortTrafficSensor(ArubaSwitchEntity, SensorEntity):
-    """Dedicated sensor for port traffic with proper data size handling."""
-    
-    def __init__(self, coordinator, port: str, entry_id: str, direction: str):
-        """Initialize the traffic sensor.
-        
-        Args:
-            direction: Either 'in' or 'out' for bytes received/transmitted
-        """
-        super().__init__(coordinator, entry_id)
-        self._port = port
-        self._direction = direction
-        self._attr_translation_key = f"port_bytes_{direction}"
-        self._attr_name = f"Port {port} Traffic {'In' if direction == 'in' else 'Out'}"
-        self._attr_unique_id = f"aruba_switch_{coordinator.host.replace('.', '_')}_port_{port}_bytes_{direction}"
-        self._attr_icon = "mdi:download" if direction == "in" else "mdi:upload"
-        self._attr_device_class = SensorDeviceClass.DATA_SIZE
-        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
-        self._attr_suggested_display_precision = 0
-        self._attr_suggested_unit_of_measurement = UnitOfInformation.MEGABYTES
-        
-    @property
-    def native_value(self) -> Optional[int]:
-        """Return bytes received or transmitted."""
-        data = self._get_coordinator_data()
-        if not data:
-            return None
-            
-        statistics = data.get("statistics", {})
-        port_stats = statistics.get(self._port, {})
-        
-        if self._direction == "in":
-            return port_stats.get("bytes_rx", 0)
-        else:
-            return port_stats.get("bytes_tx", 0)
+# Removed ArubaPortTrafficSensor class - traffic data is now available as attributes on the consolidated port sensor

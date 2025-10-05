@@ -346,11 +346,17 @@ class ArubaSSHManager:
         link_details: dict[str, dict] = {}
         current_interface: str | None = None
         in_totals_section = False
+        in_errors_section = False
+        in_others_section = False
+        in_rates_section = False
 
         for raw_line in output.split('\n'):
             line = raw_line.strip()
             if not line:
                 in_totals_section = False
+                in_errors_section = False
+                in_others_section = False
+                in_rates_section = False
                 continue
 
             line_lower = line.lower()
@@ -381,7 +387,12 @@ class ArubaSSHManager:
 
                     if port_num:
                         current_interface = port_num
-                        interfaces[current_interface] = {"port_enabled": False, "link_status": "down"}
+                        interfaces[current_interface] = {
+                            "port_enabled": False,
+                            "link_status": "down",
+                            "mac_address": "unknown",
+                            "name": ""
+                        }
                         statistics[current_interface] = {
                             "bytes_in": 0,
                             "bytes_out": 0,
@@ -391,6 +402,32 @@ class ArubaSSHManager:
                             "bytes_tx": 0,
                             "unicast_rx": 0,
                             "unicast_tx": 0,
+                            "bcast_mcast_rx": 0,
+                            "bcast_mcast_tx": 0,
+                            # Error counters
+                            "fcs_rx": 0,
+                            "drops_tx": 0,
+                            "alignment_rx": 0,
+                            "collisions_tx": 0,
+                            "runts_rx": 0,
+                            "late_colln_tx": 0,
+                            "giants_rx": 0,
+                            "excessive_colln": 0,
+                            "total_rx_errors": 0,
+                            "deferred_tx": 0,
+                            # Other counters
+                            "discard_rx": 0,
+                            "out_queue_len": 0,
+                            "unknown_protos": 0,
+                            # Rates (5 minute averages)
+                            "total_rx_bps": 0,
+                            "total_tx_bps": 0,
+                            "unicast_rx_pps": 0,
+                            "unicast_tx_pps": 0,
+                            "bcast_mcast_rx_pps": 0,
+                            "bcast_mcast_tx_pps": 0,
+                            "utilization_rx_percent": 0.0,
+                            "utilization_tx_percent": 0.0,
                         }
                         link_details[current_interface] = {
                             "link_up": False,
@@ -400,6 +437,9 @@ class ArubaSSHManager:
                         }
                         _LOGGER.debug(f"Started parsing port {current_interface} from line: '{line}'")
                         in_totals_section = False
+                        in_errors_section = False
+                        in_others_section = False
+                        in_rates_section = False
                 except Exception:
                     continue
 
@@ -408,14 +448,33 @@ class ArubaSSHManager:
             if current_interface is None:
                 continue
 
-            # Track which section of the output we're parsing so packet counters don't get overwritten by rate lines
+            # Track which section of the output we're parsing
             if "totals (since boot" in line_lower:
                 in_totals_section = True
+                in_errors_section = False
+                in_others_section = False
+                in_rates_section = False
                 continue
-            if any(trigger in line_lower for trigger in ["errors (since boot", "others (since boot", "rates ("]):
+            elif "errors (since boot" in line_lower:
                 in_totals_section = False
+                in_errors_section = True
+                in_others_section = False
+                in_rates_section = False
+                continue
+            elif "others (since boot" in line_lower:
+                in_totals_section = False
+                in_errors_section = False
+                in_others_section = True
+                in_rates_section = False
+                continue
+            elif "rates (" in line_lower:
+                in_totals_section = False
+                in_errors_section = False
+                in_others_section = False
+                in_rates_section = True
+                continue
 
-            # Parse port status, link details, and statistics using existing logic
+            # Parse port status, link details, and statistics
             import re
 
             if "enabled" in line_lower:
@@ -424,6 +483,8 @@ class ArubaSSHManager:
                 )
 
             normalized_line = re.sub(r"\s+", " ", line_lower.strip())
+            
+            # Port enabled status
             if ("port enabled :" in normalized_line) or ("port enabled:" in normalized_line):
                 value_part = line.split(":", 1)[1].strip().lower()
                 is_enabled = any(pos in value_part for pos in ["yes", "enabled", "up", "active", "true"])
@@ -434,6 +495,7 @@ class ArubaSSHManager:
                 )
                 continue
 
+            # Link status
             if ("link status :" in normalized_line) or ("link status:" in normalized_line):
                 value_part = line.split(":", 1)[1].strip().lower()
                 link_up = "up" in value_part
@@ -443,6 +505,22 @@ class ArubaSSHManager:
                     f"Port {current_interface}: Found 'Link Status' line: '{line}' -> value_part: '{value_part}' -> link_up: {link_up}"
                 )
                 continue
+
+            # MAC Address
+            if "mac address" in normalized_line and ":" in line:
+                parts = line.split(":", 1)
+                if len(parts) == 2:
+                    mac_address = parts[1].strip()
+                    interfaces[current_interface]["mac_address"] = mac_address
+                    continue
+
+            # Port Name
+            if normalized_line.startswith("name :") or normalized_line.startswith("name:"):
+                parts = line.split(":", 1)
+                if len(parts) == 2:
+                    name = parts[1].strip()
+                    interfaces[current_interface]["name"] = name
+                    continue
 
             if ":" not in line:
                 continue
@@ -464,25 +542,156 @@ class ArubaSSHManager:
                         continue
                 return numbers
 
-            if "bytes rx" in key and in_totals_section:
-                numbers = extract_numbers(value_str)
-                if len(numbers) >= 2:
-                    statistics[current_interface]["bytes_rx"] = numbers[0]
-                    statistics[current_interface]["bytes_tx"] = numbers[1]
-                elif len(numbers) == 1:
-                    statistics[current_interface]["bytes_rx"] = numbers[0]
-                continue
+            def extract_float(text: str) -> float:
+                """Extract floating point number from text."""
+                match = re.search(r'(\d+(?:\.\d+)?)', text)
+                if match:
+                    try:
+                        return float(match.group(1))
+                    except ValueError:
+                        pass
+                return 0.0
 
-            if "unicast rx" in key and in_totals_section and "pkts/sec" not in key:
-                numbers = extract_numbers(value_str)
-                if len(numbers) >= 2:
-                    statistics[current_interface]["unicast_rx"] = numbers[0]
-                    statistics[current_interface]["unicast_tx"] = numbers[1]
-                    statistics[current_interface]["packets_in"] = numbers[0]
-                    statistics[current_interface]["packets_out"] = numbers[1]
-                elif len(numbers) == 1:
-                    statistics[current_interface]["unicast_rx"] = numbers[0]
-                    statistics[current_interface]["packets_in"] = numbers[0]
+            # Totals section
+            if in_totals_section:
+                if "bytes rx" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["bytes_rx"] = numbers[0]
+                        statistics[current_interface]["bytes_tx"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["bytes_rx"] = numbers[0]
+                    continue
+
+                if "unicast rx" in key and "pkts/sec" not in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["unicast_rx"] = numbers[0]
+                        statistics[current_interface]["unicast_tx"] = numbers[1]
+                        statistics[current_interface]["packets_in"] = numbers[0]
+                        statistics[current_interface]["packets_out"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["unicast_rx"] = numbers[0]
+                        statistics[current_interface]["packets_in"] = numbers[0]
+                    continue
+
+                if "bcast/mcast rx" in key or "b/mcast rx" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["bcast_mcast_rx"] = numbers[0]
+                        statistics[current_interface]["bcast_mcast_tx"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["bcast_mcast_rx"] = numbers[0]
+                    continue
+
+            # Errors section
+            if in_errors_section:
+                if "fcs rx" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["fcs_rx"] = numbers[0]
+                        statistics[current_interface]["drops_tx"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["fcs_rx"] = numbers[0]
+                    continue
+
+                if "alignment rx" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["alignment_rx"] = numbers[0]
+                        statistics[current_interface]["collisions_tx"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["alignment_rx"] = numbers[0]
+                    continue
+
+                if "runts rx" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["runts_rx"] = numbers[0]
+                        statistics[current_interface]["late_colln_tx"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["runts_rx"] = numbers[0]
+                    continue
+
+                if "giants rx" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["giants_rx"] = numbers[0]
+                        statistics[current_interface]["excessive_colln"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["giants_rx"] = numbers[0]
+                    continue
+
+                if "total rx errors" in key or "total errors" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["total_rx_errors"] = numbers[0]
+                        statistics[current_interface]["deferred_tx"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["total_rx_errors"] = numbers[0]
+                    continue
+
+            # Others section
+            if in_others_section:
+                if "discard rx" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["discard_rx"] = numbers[0]
+                        statistics[current_interface]["out_queue_len"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["discard_rx"] = numbers[0]
+                    continue
+
+                if "unknown protos" in key or "unknown proto" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 1:
+                        statistics[current_interface]["unknown_protos"] = numbers[0]
+                    continue
+
+            # Rates section
+            if in_rates_section:
+                if "total rx (bps)" in key or "total rx" in key and "bps" in key:
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["total_rx_bps"] = numbers[0]
+                        statistics[current_interface]["total_tx_bps"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["total_rx_bps"] = numbers[0]
+                    continue
+
+                if "unicast rx (pkts/sec)" in key or ("unicast rx" in key and "pkts/sec" in key):
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["unicast_rx_pps"] = numbers[0]
+                        statistics[current_interface]["unicast_tx_pps"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["unicast_rx_pps"] = numbers[0]
+                    continue
+
+                if "b/mcast rx (pkts/sec)" in key or ("b/mcast rx" in key and "pkts/sec" in key):
+                    numbers = extract_numbers(value_str)
+                    if len(numbers) >= 2:
+                        statistics[current_interface]["bcast_mcast_rx_pps"] = numbers[0]
+                        statistics[current_interface]["bcast_mcast_tx_pps"] = numbers[1]
+                    elif len(numbers) == 1:
+                        statistics[current_interface]["bcast_mcast_rx_pps"] = numbers[0]
+                    continue
+
+                if "utilization rx" in key:
+                    util_rx = extract_float(value_str)
+                    statistics[current_interface]["utilization_rx_percent"] = util_rx
+                    # Try to extract TX utilization from same line
+                    if "utilization tx" in value_str.lower():
+                        tx_match = re.search(r'utilization tx\s*:\s*([\d.]+)', value_str.lower())
+                        if tx_match:
+                            util_tx = float(tx_match.group(1))
+                            statistics[current_interface]["utilization_tx_percent"] = util_tx
+                    continue
+
+                if "utilization tx" in key:
+                    util_tx = extract_float(value_str)
+                    statistics[current_interface]["utilization_tx_percent"] = util_tx
+                    continue
 
         return interfaces, statistics, link_details
     
@@ -557,7 +766,11 @@ class ArubaSSHManager:
                                     "link_speed_mbps": speed_mbps,
                                     "duplex": duplex,
                                     "mode": mode,
-                                    "mdi": right_fields[4] if len(right_fields) > 4 else "unknown"
+                                    "mdi": right_fields[4] if len(right_fields) > 4 else "unknown",
+                                    "port_type": right_fields[0] if len(right_fields) > 0 else "unknown",
+                                    "intrusion_alert": right_fields[1].lower() == "yes" if len(right_fields) > 1 else False,
+                                    "enabled": right_fields[2].lower() == "yes" if len(right_fields) > 2 else False,
+                                    "flow_control": right_fields[5].lower() if len(right_fields) > 5 else "off",
                                 }
                         except (ValueError, IndexError):
                             continue
@@ -565,7 +778,7 @@ class ArubaSSHManager:
         return brief_info
     
     def parse_show_power_over_ethernet_all(self, output: str) -> dict:
-        """Parse 'show power-over-ethernet all' output for PoE status."""
+        """Parse 'show power-over-ethernet all' output for PoE status and detailed power information."""
         poe_ports = {}
         current_port = None
         
@@ -588,7 +801,26 @@ class ArubaSSHManager:
                     if re.match(r'^\s*\d+(/\d+)?\s+', line):
                         try:
                             current_port = line.split()[0]
-                            poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
+                            poe_ports[current_port] = {
+                                "power_enable": False,
+                                "poe_status": "off",
+                                "pse_voltage": 0.0,
+                                "pd_amperage_draw": 0,
+                                "pd_power_draw": 0.0,
+                                "pse_reserved_power": 0.0,
+                                "plc_class": "unknown",
+                                "plc_type": "unknown",
+                                "dlc_class": "unknown",
+                                "dlc_type": "unknown",
+                                "priority_config": "unknown",
+                                "pre_std_detect": "unknown",
+                                "lldp_pse_allocated": 0.0,
+                                "lldp_pd_requested": 0.0,
+                                "over_current_cnt": 0,
+                                "power_denied_cnt": 0,
+                                "short_cnt": 0,
+                                "mps_absent_cnt": 0,
+                            }
                             port_found = True
                             break
                         except:
@@ -605,7 +837,26 @@ class ArubaSSHManager:
                         
                         if port_num and port_num.replace('/', '').replace('.', '').isdigit():
                             current_port = port_num
-                            poe_ports[current_port] = {"power_enable": False, "poe_status": "off"}
+                            poe_ports[current_port] = {
+                                "power_enable": False,
+                                "poe_status": "off",
+                                "pse_voltage": 0.0,
+                                "pd_amperage_draw": 0,
+                                "pd_power_draw": 0.0,
+                                "pse_reserved_power": 0.0,
+                                "plc_class": "unknown",
+                                "plc_type": "unknown",
+                                "dlc_class": "unknown",
+                                "dlc_type": "unknown",
+                                "priority_config": "unknown",
+                                "pre_std_detect": "unknown",
+                                "lldp_pse_allocated": 0.0,
+                                "lldp_pd_requested": 0.0,
+                                "over_current_cnt": 0,
+                                "power_denied_cnt": 0,
+                                "short_cnt": 0,
+                                "mps_absent_cnt": 0,
+                            }
                             port_found = True
                             break
                     except:
@@ -614,36 +865,122 @@ class ArubaSSHManager:
             if port_found:
                 continue
             elif current_port:
-                # Parse PoE data for current port using existing logic
+                # Parse PoE data for current port
                 def parse_combined_line(line_text):
                     parsed_fields = {}
                     import re
                     matches = re.findall(r'([^:]+?)\s*:\s*([^:]*?)(?=\s{3,}[^:]+\s*:|$)', line_text)
                     for key, value in matches:
                         key = key.strip().lower()
-                        value = value.strip().lower()
+                        value = value.strip()
                         parsed_fields[key] = value
                     return parsed_fields
                 
                 parsed_data = parse_combined_line(line)
                 
                 for key, value in parsed_data.items():
+                    value_lower = value.lower()
+                    
                     if "power enable" in key:
-                        is_enabled = "yes" in value
+                        is_enabled = "yes" in value_lower
                         poe_ports[current_port]["power_enable"] = is_enabled
+                    
                     elif "poe port status" in key or "poe status" in key:
                         poe_status_str = "off"
-                        if "searching" in value:
+                        if "searching" in value_lower:
                             poe_status_str = "searching"
-                        elif "delivering" in value or "deliver" in value:
+                        elif "delivering" in value_lower or "deliver" in value_lower:
                             poe_status_str = "delivering"
-                        elif "enabled" in value or "on" in value or "active" in value:
+                        elif "enabled" in value_lower or "on" in value_lower or "active" in value_lower:
                             poe_status_str = "on"
-                        elif "fault" in value or "error" in value or "overload" in value:
+                        elif "fault" in value_lower or "error" in value_lower or "overload" in value_lower:
                             poe_status_str = "fault"
-                        elif "denied" in value or "reject" in value:
+                        elif "denied" in value_lower or "reject" in value_lower:
                             poe_status_str = "denied"
                         poe_ports[current_port]["poe_status"] = poe_status_str
+                    
+                    # Parse power and electrical values
+                    elif "pse voltage" in key:
+                        import re
+                        match = re.search(r'([\d.]+)', value)
+                        if match:
+                            poe_ports[current_port]["pse_voltage"] = float(match.group(1))
+                    
+                    elif "pd amperage draw" in key:
+                        import re
+                        match = re.search(r'(\d+)', value)
+                        if match:
+                            poe_ports[current_port]["pd_amperage_draw"] = int(match.group(1))
+                    
+                    elif "pd power draw" in key:
+                        import re
+                        match = re.search(r'([\d.]+)', value)
+                        if match:
+                            poe_ports[current_port]["pd_power_draw"] = float(match.group(1))
+                    
+                    elif "pse reserved power" in key:
+                        import re
+                        match = re.search(r'([\d.]+)', value)
+                        if match:
+                            poe_ports[current_port]["pse_reserved_power"] = float(match.group(1))
+                    
+                    # Parse PoE class and type
+                    elif "plc class" in key:
+                        poe_ports[current_port]["plc_class"] = value
+                    
+                    elif "plc type" in key:
+                        poe_ports[current_port]["plc_type"] = value
+                    
+                    elif "dlc class" in key:
+                        poe_ports[current_port]["dlc_class"] = value
+                    
+                    elif "dlc type" in key:
+                        poe_ports[current_port]["dlc_type"] = value
+                    
+                    # Parse priority and detection
+                    elif "priority config" in key:
+                        poe_ports[current_port]["priority_config"] = value_lower
+                    
+                    elif "pre-std detect" in key:
+                        poe_ports[current_port]["pre_std_detect"] = value_lower
+                    
+                    # Parse LLDP power information
+                    elif "lldp pse allocated" in key:
+                        import re
+                        match = re.search(r'([\d.]+)', value)
+                        if match:
+                            poe_ports[current_port]["lldp_pse_allocated"] = float(match.group(1))
+                    
+                    elif "lldp pd requested" in key:
+                        import re
+                        match = re.search(r'([\d.]+)', value)
+                        if match:
+                            poe_ports[current_port]["lldp_pd_requested"] = float(match.group(1))
+                    
+                    # Parse error/fault counters
+                    elif "over current cnt" in key:
+                        import re
+                        match = re.search(r'(\d+)', value)
+                        if match:
+                            poe_ports[current_port]["over_current_cnt"] = int(match.group(1))
+                    
+                    elif "power denied cnt" in key:
+                        import re
+                        match = re.search(r'(\d+)', value)
+                        if match:
+                            poe_ports[current_port]["power_denied_cnt"] = int(match.group(1))
+                    
+                    elif "short cnt" in key:
+                        import re
+                        match = re.search(r'(\d+)', value)
+                        if match:
+                            poe_ports[current_port]["short_cnt"] = int(match.group(1))
+                    
+                    elif "mps absent cnt" in key:
+                        import re
+                        match = re.search(r'(\d+)', value)
+                        if match:
+                            poe_ports[current_port]["mps_absent_cnt"] = int(match.group(1))
         
         return poe_ports
 
@@ -662,22 +999,12 @@ class ArubaSSHManager:
                 
             line_lower = line.lower()
             
-            # Extract switch model from command prompt (e.g., "HP-2530-24G-PoEP#")
-            # Look for HP model patterns in any line, not just those ending with #
-            if ('hp-' in line_lower or 'aruba-' in line_lower) and ('#' in line or 'show' in line_lower):
-                import re
-                # More flexible pattern to catch model names in various contexts
-                model_match = re.search(r'((?:HP|Aruba)-[A-Z0-9-]+)', line, re.IGNORECASE)
-                if model_match:
-                    version_info["model"] = model_match.group(1)
-                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found model in line: {model_match.group(1)} from line: {line}")
-            elif line.endswith('#') and '-' in line and 'hp' in line_lower:
-                # Fallback: original logic for lines ending with #
-                import re
-                model_match = re.search(r'(HP-[A-Z0-9-]+)', line, re.IGNORECASE)
-                if model_match:
-                    version_info["model"] = model_match.group(1)
-                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found model in prompt: {model_match.group(1)} from line: {line}")
+            # Store hostname if found in command prompt (everything before the # is the hostname)
+            if line.endswith('#'):
+                hostname = line[:-1].strip()  # Remove the # and any whitespace
+                if hostname:
+                    version_info["hostname"] = hostname
+                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found hostname in prompt: {hostname} from line: {line}")
             
             # Parse various version fields from HP/Aruba switches
             if ":" in line:

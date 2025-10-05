@@ -3,15 +3,13 @@
     "step": {
       "user": {
         "title": "HP/Aruba Switch Configuration",
-        "description": "Enter the connection details for your HP/Aruba switch. This integration provides control over switch ports, PoE management, and port activity monitoring through SSH.\n\n⚠️ Note: The integration may take 2-3 minutes to fully initialize all entities after adding. Switch controls will be available first, followed by port activity sensors.",
+        "description": "",
         "data": {
           "host": "Host (IP address or hostname)",
           "username": "Username",
           "password": "Password",
           "ssh_port": "SSH Port (default: 22)",
           "port_count": "Number of ports (1-48, default: 24)",
-          "exclude_ports": "Exclude ports (comma-separated, e.g., 1,24)",
-          "exclude_poe": "Exclude PoE ports (comma-separated, e.g., 23,24)",
           "refresh_interval": "Refresh interval in seconds (10-300, default: 30)"
         }
       }
@@ -35,8 +33,6 @@
           "password": "Password", 
           "ssh_port": "SSH Port (default: 22)",
           "port_count": "Number of ports (1-48, default: 24)",
-          "exclude_ports": "Exclude ports (comma-separated, e.g., 1,24)",
-          "exclude_poe": "Exclude PoE ports (comma-separated, e.g., 23,24)",
           "refresh_interval": "Refresh interval in seconds (10-300, default: 30)"
         }
       }
@@ -51,15 +47,6 @@
     "sensor": {
       "port_statistics": {
         "name": "Port {port}"
-      },
-      "port_bytes_in": {
-        "name": "Port {port} Traffic In"
-      },
-      "port_bytes_out": {
-        "name": "Port {port} Traffic Out"
-      },
-      "switch_status": {
-        "name": "Switch Status"
       }
     },
     "select": {

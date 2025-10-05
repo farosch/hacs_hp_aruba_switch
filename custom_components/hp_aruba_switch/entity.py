@@ -32,6 +32,22 @@ class ArubaSwitchEntity(CoordinatorEntity):
         # Add serial number if available
         if self.coordinator.serial_number and self.coordinator.serial_number != "Unknown":
             device["serial_number"] = self.coordinator.serial_number
+            
+        # Add hostname if available
+        if self.coordinator.hostname:
+            device["hostname"] = self.coordinator.hostname
+            
+        # Add MAC address if available  
+        if self.coordinator.mac_address:
+            device["mac_address"] = self.coordinator.mac_address
+            
+        # Add hardware revision if available
+        if self.coordinator.hardware_revision:
+            device["hw_version"] = self.coordinator.hardware_revision
+            
+        # Add uptime if available (as configuration URL since HA doesn't have uptime field)
+        if self.coordinator.uptime:
+            device["configuration_url"] = f"Uptime: {self.coordinator.uptime}"
         
         # Add configuration URL
         device["configuration_url"] = f"https://{self.coordinator.host}"

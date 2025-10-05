@@ -4,11 +4,6 @@
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]][license-url]
 
-> **⚠️ BREAKING CHANGES IN v1.0.8**  
-> This release includes major architectural improvements that **WILL BREAK existing installations**.  
-> **All entities will be recreated with new IDs.** You will need to update your dashboards, automations, and scripts.  
-> See [RELEASE_NOTES.md](RELEASE_NOTES.md) for migration instructions.
-
 A Home Assistant custom integration that provides control over HP/Aruba switch ports and PoE management through SSH connectivity.
 
 ## 🌟 **Key Features**
@@ -101,7 +96,6 @@ This design ensures reliable operation even with 50+ entities without overwhelmi
    - **Username**: Switch administrator username
    - **Password**: Switch administrator password
    - **SSH Port**: SSH port (default: 22)
-   - **Exclude Ports**: Comma-separated list of ports to exclude (optional)
 
 ### Configuration Options
 
@@ -112,8 +106,6 @@ This design ensures reliable operation even with 50+ entities without overwhelmi
 | Password | Yes | - | Administrator password |
 | SSH Port | Yes | 22 | SSH port number |
 | Ports | Yes | - | Amount of Ports (e.g., "24") |
-| Exclude Ports | No | - | Ports to exclude (e.g., "1,24") |
-| Exclude PoE | No | - | Ports to exclude (e.g., "1,24") |
 
 ## Entities Created
 
@@ -121,17 +113,12 @@ After successful configuration, the integration creates the following entities:
 
 ### Switch Entities
 For each port (e.g., port 1):
-- `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port control
-- `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_poe_1` - PoE control
+- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port sensor with comprehensive data (link status, speed, traffic, PoE status, etc. as attributes)
+- `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1` - Port control (enable/disable)
+- `switch.hp_aruba_switch_xxx_xxx_xxx_xxx_poe_1` - PoE control (enable/disable)
 
-### Monitoring Entities
-- `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_connectivity` - Switch online/offline status
-- `binary_sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_port_1_link` - Port link status (for each port)
-
-### Device Information Sensors
-- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_firmware_version` - Switch firmware version
-- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_model` - Switch model information
-- `sensor.hp_aruba_switch_xxx_xxx_xxx_xxx_serial_number` - Switch serial number
+### Switch Information
+All switch information (firmware version, model, serial number, uptime, etc.) is available as device attributes and in the consolidated port sensors.
 
 All entities are automatically created and registered in Home Assistant with proper device information.
 
@@ -200,7 +187,6 @@ script:
 - Consider increasing update intervals for better performance
 
 **Performance issues:**
-- Use "Exclude Ports" to reduce entity count
 - Check network latency to switch
 - Monitor Home Assistant resource usage
 
