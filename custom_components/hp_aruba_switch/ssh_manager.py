@@ -999,22 +999,12 @@ class ArubaSSHManager:
                 
             line_lower = line.lower()
             
-            # Extract switch model from command prompt (e.g., "HP-2530-24G-PoEP#")
-            # Look for HP model patterns in any line, not just those ending with #
-            if ('hp-' in line_lower or 'aruba-' in line_lower) and ('#' in line or 'show' in line_lower):
-                import re
-                # More flexible pattern to catch model names in various contexts
-                model_match = re.search(r'((?:HP|Aruba)-[A-Z0-9-]+)', line, re.IGNORECASE)
-                if model_match:
-                    version_info["model"] = model_match.group(1)
-                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found model in line: {model_match.group(1)} from line: {line}")
-            elif line.endswith('#') and '-' in line and 'hp' in line_lower:
-                # Fallback: original logic for lines ending with #
-                import re
-                model_match = re.search(r'(HP-[A-Z0-9-]+)', line, re.IGNORECASE)
-                if model_match:
-                    version_info["model"] = model_match.group(1)
-                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found model in prompt: {model_match.group(1)} from line: {line}")
+            # Store hostname if found in command prompt (everything before the # is the hostname)
+            if line.endswith('#'):
+                hostname = line[:-1].strip()  # Remove the # and any whitespace
+                if hostname:
+                    version_info["hostname"] = hostname
+                    _LOGGER.debug(f"🏷️ VERSION PARSING: Found hostname in prompt: {hostname} from line: {line}")
             
             # Parse various version fields from HP/Aruba switches
             if ":" in line:

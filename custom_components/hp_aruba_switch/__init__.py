@@ -126,6 +126,10 @@ class ArubaSwitchCoordinator(DataUpdateCoordinator):
             self.model = version_info.get("model", self.model)
             self.firmware = version_info.get("firmware_version", self.firmware)
             self.serial_number = version_info.get("serial_number", self.serial_number)
+            self.hostname = version_info.get("hostname", getattr(self, 'hostname', None))
+            self.mac_address = version_info.get("mac_address", getattr(self, 'mac_address', None))
+            self.hardware_revision = version_info.get("hardware_revision", getattr(self, 'hardware_revision', None))
+            self.uptime = version_info.get("uptime", getattr(self, 'uptime', None))
     
     def _precalculate_states(self, data: Dict[str, Any]) -> None:
         """Pre-calculate entity states for performance optimization."""
