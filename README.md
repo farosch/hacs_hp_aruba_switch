@@ -237,35 +237,7 @@ show interface all
 show power-over-ethernet
 ```
 
-## 🎯 **Performance & Reliability**
-
-- **Update Intervals**: Switch entities update every 30 seconds
-- **Connection Limits**: Single coordinator per switch
-- **Dynamic Entity Creation**: Only for detected ports
-- **Bulk State Calculation**: Pre-calculated states for performance
-- **Lazy Loading**: Non-critical entities loaded after startup
-
-## Languages Supported
-
-The integration is available in multiple languages:
-- English (default)
-- German (Deutsch)
-- French (Français)
-- Italian (Italiano)
-- Spanish (Español)
-
-## Development & Testing
-
-### Automated CI/CD Pipeline
-
-This project uses GitHub Actions for automated testing and releases:
-
-- **Tests**: Run automatically on ALL branches when code is pushed
-- **Releases**: Created automatically when pushing to `main` branch after tests pass
-- **Versioning**: Single source of truth in `manifest.json`
-- **Release Notes**: Automatically populated from `RELEASE_NOTES.md`
-
-See [HOW_TO_RELEASE.md](HOW_TO_RELEASE.md) for step-by-step instructions on creating a release.
+## Testing
 
 ### Running Tests Locally
 
