@@ -1,4 +1,5 @@
 """Pytest configuration and fixtures for HP/Aruba Switch tests."""
+
 import pytest
 from unittest.mock import MagicMock, patch
 from homeassistant.core import HomeAssistant
@@ -56,7 +57,12 @@ def mock_coordinator():
             "3": {"port_enabled": False, "link_status": "down"},
         },
         "statistics": {
-            "1": {"bytes_rx": 1234567, "bytes_tx": 987654, "unicast_rx": 1000, "unicast_tx": 500},
+            "1": {
+                "bytes_rx": 1234567,
+                "bytes_tx": 987654,
+                "unicast_rx": 1000,
+                "unicast_tx": 500,
+            },
             "2": {"bytes_rx": 0, "bytes_tx": 0, "unicast_rx": 0, "unicast_tx": 0},
             "3": {"bytes_rx": 0, "bytes_tx": 0, "unicast_rx": 0, "unicast_tx": 0},
         },
@@ -106,14 +112,14 @@ def load_test_output():
     """Load test output files."""
     import os
     from pathlib import Path
-    
+
     test_data_dir = Path(__file__).parent / "test_data"
-    
+
     def _load(filename):
         """Load a test output file."""
         filepath = test_data_dir / filename
         if filepath.exists():
             return filepath.read_text()
         return ""
-    
+
     return _load

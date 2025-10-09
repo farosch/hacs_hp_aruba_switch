@@ -30,7 +30,7 @@
         "description": "Update your HP/Aruba switch configuration. Changes will take effect on the next refresh cycle.\n\n⚠️ Note: Host cannot be changed here. To connect to a different switch, delete and re-add the integration.",
         "data": {
           "username": "Username",
-          "password": "Password", 
+          "password": "Password",
           "ssh_port": "SSH Port (default: 22)",
           "port_count": "Number of ports (1-48, default: 24)",
           "refresh_interval": "Refresh interval in seconds (10-300, default: 30)"
